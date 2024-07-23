@@ -1,0 +1,26 @@
+echo    "Processing Files .. "
+
+delete UthernetII
+filetype uthernet2.asm $b0 $0003
+filetype resources.src $b0 $0015
+
+17/macgen +C uthernet2.asm uthernet.macros uthernet.macros 13/Ainclude/mm16.= 13/Ainclude/m16.= 13/ORCAInclude/M16.=
+assemble +W +E +T uthernet2.asm keep=UthernetII
+link +b UthernetII keep=UthernetII
+
+compile +w resources.src KEEP=Resources rez=(-type $5e)
+copy -r resources UthernetII
+
+filetype UthernetII $bc $4083
+
+* bye
+echo " "
+echo " "
+echo "     d8888b.  .d88b.  d8b   db d88888b "
+echo "     88  `8D .8P  Y8. 888o  88 88'     "
+echo "     88   88 88    88 88V8o 88 88ooooo "
+echo "     88   88 88    88 88 V8o88 88~~~~~ "
+echo "     88  .8D `8b  d8' 88  V888 88.     "
+echo "     Y8888D'  `Y88P'  VP   V8P Y88888P "
+                                  
+                                                           

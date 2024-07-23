@@ -1,0 +1,562 @@
+ MACRO
+ stax &arg
+ sta &arg
+ stx 1+(&arg)
+ mend
+ MACRO
+&LAB STR &STR,&HEX
+&LAB DC I1"L:SYSA&SYSCNT"
+SYSA&SYSCNT DC C"&STR"
+ AIF C:&HEX,.A
+ MEXIT
+.A
+ DC H"&HEX"
+ MEND
+ MACRO
+&LAB MDS &N1,&N2
+ AIF "&N1"<>"\",.A
+&LAB ALIGN 256
+ MEXIT
+.A
+ LCLA &A
+&A SETA &N1
+ AIF C:&N2,.C
+ AIF &A<0,.B
+&LAB DS &A
+ MEXIT
+.B
+&LAB ORG *-&A
+ MEXIT
+.C
+&LAB DC &A.I1"&N2"
+ MEND
+ MACRO
+&LAB MX &N1
+&LAB ANOP
+ LONGA OFF
+ LONGI OFF
+ LCLA &A
+&A SETA &N1
+ AIF &A=0,.A
+ AIF &A=1,.B
+ AIF &A=2,.C
+ MEXIT
+.A
+ LONGA ON
+ LONGI ON
+ MEXIT
+.B
+ LONGI ON
+ MEXIT
+.C
+ LONGA ON
+ MEND
+ macro
+&l add4 &m1,&m2,&m3
+ lclb &yistwo
+ lclc &c
+&l ~setm
+ aif c:&m3,.a
+&c amid "&m2",1,1
+ aif "&c"<>"#",.a
+&c amid "&m1",1,1
+ aif "&c"="{",.a
+ aif "&c"="[",.a
+&c amid "&m2",2,l:&m2-1
+ aif &c>=65536,.a
+ clc
+ ~lda &m1
+ ~op adc,&m2
+ ~sta &m1
+ bcc ~&SYSCNT
+ ~op.h inc,&m1
+~&SYSCNT anop
+ ago .c
+.a
+ aif c:&m3,.b
+ lclc &m3
+&m3 setc &m1
+.b
+ clc
+ ~lda &m1
+ ~op adc,&m2
+ ~sta &m3
+ ~lda.h &m1
+ ~op.h adc,&m2
+ ~sta.h &m3
+.c
+ ~restm
+ mend
+ macro
+&l sub4 &m1,&m2,&m3
+ lclb &yistwo
+ lclc &c
+&l ~setm
+ aif c:&m3,.a
+&c amid "&m2",1,1
+ aif "&c"<>"#",.a
+&c amid "&m1",1,1
+ aif "&c"="{",.a
+ aif "&c"="[",.a
+&c amid "&m2",2,l:&m2-1
+ aif &c>=65536,.a
+ sec
+ ~lda &m1
+ ~op sbc,&m2
+ ~sta &m1
+ bcs ~&SYSCNT
+ ~op.h dec,&m1
+~&SYSCNT anop
+ ago .c
+.a
+ aif c:&m3,.b
+ lclc &m3
+&m3 setc &m1
+.b
+ sec
+ ~lda &m1
+ ~op sbc,&m2
+ ~sta &m3
+ ~lda.h &m1
+ ~op.h sbc,&m2
+ ~sta.h &m3
+.c
+ ~restm
+ mend
+ macro
+&l ~lda &op
+ lclc &c
+&c amid "&op",1,1
+ aif "&c"<>"{",.b
+&c amid "&op",l:&op,1
+ aif "&c"="}",.a
+ mnote "Missing closing '}'",2
+&op setc &op}
+.a
+&op amid "&op",2,l:&op-2
+&op setc (&op)
+.b
+&l lda &op
+ mend
+ macro
+&l ~lda.h &op
+&l anop
+ lclc &c
+&c amid "&op",1,1
+ aif "&c"="[",.b
+ aif "&c"<>"{",.d
+&c amid "&op",l:&op,1
+ aif "&c"="}",.a
+ mnote "Missing closing '}'",2
+&op setc &op}
+.a
+&op amid "&op",2,l:&op-2
+&op setc (&op)
+.b
+ aif &yistwo,.c
+&yistwo setb 1
+ ldy #2
+.c
+&op setc "&op,y"
+ lda &op
+ mexit
+.d
+ aif "&c"<>"#",.e
+&op amid "&op",2,l:&op-1
+&op setc "#^&op"
+ lda &op
+ mexit
+.e
+ lda 2+&op
+ mend
+ macro
+&l ~op &opc,&op
+ lclc &c
+&c amid "&op",1,1
+ aif "&c"<>"{",.b
+&c amid "&op",l:&op,1
+ aif "&c"="}",.a
+ mnote "Missing closing '}'",2
+&op setc &op}
+.a
+&op amid "&op",2,l:&op-2
+&op setc (&op)
+.b
+&l &opc &op
+ mend
+ macro
+&l ~op.h &opc,&op
+&l anop
+ lclc &c
+&c amid "&op",1,1
+ aif "&c"="[",.b
+ aif "&c"<>"{",.d
+&c amid "&op",l:&op,1
+ aif "&c"="}",.a
+ mnote "Missing closing '}'",2
+&op setc &op}
+.a
+&op amid "&op",2,l:&op-2
+&op setc (&op)
+.b
+ aif &yistwo,.c
+&yistwo setb 1
+ ldy #2
+.c
+&op setc "&op,y"
+ &opc &op
+ mexit
+.d
+ aif "&c"<>"#",.e
+&op amid "&op",2,l:&op-1
+&op setc "#^&op"
+ &opc &op
+ mexit
+.e
+ &opc 2+&op
+ mend
+ macro
+&l ~restm
+&l anop
+ aif (&~la+&~li)=2,.i
+ sep #32*(.not.&~la)+16*(.not.&~li)
+ aif &~la,.h
+ longa off
+.h
+ aif &~li,.i
+ longi off
+.i
+ mend
+ macro
+&l ~setm
+&l anop
+ aif c:&~la,.b
+ gblb &~la
+ gblb &~li
+.b
+&~la setb s:longa
+&~li setb s:longi
+ aif s:longa.and.s:longi,.a
+ rep #32*(.not.&~la)+16*(.not.&~li)
+ longa on
+ longi on
+.a
+ mend
+ macro
+&l ~sta &op
+ lclc &c
+&c amid "&op",1,1
+ aif "&c"<>"{",.b
+&c amid "&op",l:&op,1
+ aif "&c"="}",.a
+ mnote "Missing closing '}'",2
+&op setc &op}
+.a
+&op amid "&op",2,l:&op-2
+&op setc (&op)
+.b
+&l sta &op
+ mend
+ macro
+&l ~sta.h &op
+&l anop
+ lclc &c
+&c amid "&op",1,1
+ aif "&c"="[",.b
+ aif "&c"<>"{",.d
+&c amid "&op",l:&op,1
+ aif "&c"="}",.a
+ mnote "Missing closing '}'",2
+&op setc &op}
+.a
+&op amid "&op",2,l:&op-2
+&op setc (&op)
+.b
+ aif &yistwo,.c
+&yistwo setb 1
+ ldy #2
+.c
+&op setc "&op,y"
+ sta &op
+ mexit
+.d
+ sta 2+&op
+ mend
+ MACRO
+&lab _TickCount
+&lab ldx #$1006
+ jsl $E10000
+ MEND
+ MACRO
+&lab _NewHandle
+&lab ldx #$0902
+ jsl $E10000
+ MEND
+ MACRO
+&lab longmx
+&lab ANOP
+ rep #%00110000
+ longa on
+ longi on
+ MEND
+ MACRO
+&lab shortmx
+&lab ANOP
+ sep #%00110000
+ longa off
+ longi off
+ MEND
+ MACRO
+&lab longm
+&lab ANOP
+ rep #%00100000
+ longa on
+ MEND
+ MACRO
+&lab shortm
+&lab ANOP
+ sep #%00100000
+ longa off
+ MEND
+ MACRO
+&lab _PtrToHand
+&lab ldx #$2802
+ jsl $E10000
+ MEND
+ MACRO
+&lab _SetHandleSize
+&lab ldx #$1902
+ jsl $E10000
+ MEND
+ MACRO
+&lab _GetPort
+&lab ldx #$1C04
+ jsl $E10000
+ MEND
+ MACRO
+&lab _SetPort
+&lab ldx #$1B04
+ jsl $E10000
+ MEND
+ MACRO
+&lab pushlong &addr,&offset
+&lab ANOP
+ LCLC &C
+ LCLC &REST
+&C AMID &addr,1,1
+ AIF "&C"="#",.immediate
+ AIF "&C"="[",.zeropage
+ AIF C:&offset=0,.nooffset
+ AIF "&offset"="s",.stack
+ pushword &addr+2,&offset
+ pushword &addr,&offset
+ MEXIT
+.nooffset
+ pushword &addr+2
+ pushword &addr
+ MEXIT
+.immediate
+&REST AMID &addr,2,L:&addr-1
+ dc I1'$F4',I2'(&REST)|-16'
+ dc I1'$F4',I2'&REST'
+ MEXIT
+.stack
+ pushword &addr+2,s
+ pushword &addr+2,s
+ MEXIT
+.zeropage
+ ldy #&offset+2
+ pushword &addr,y
+ ldy #&offset
+ pushword &addr,y
+ MEND
+ MACRO
+&lab pushword &SYSOPR
+&lab ANOP
+ AIF C:&SYSOPR=0,.b
+ LCLC &C
+&C AMID "&SYSOPR",1,1
+ AIF ("&C"="#").AND.(S:LONGA),.immediate
+ lda &SYSOPR
+ pha
+ MEXIT
+.b
+ pha
+ MEXIT
+.immediate
+ LCLC &REST
+ LCLA &BL
+&BL ASEARCH "&SYSOPR"," ",1
+ AIF &BL>0,.a
+&BL SETA L:&SYSOPR+1
+.a
+&REST AMID "&SYSOPR",2,&BL-2
+ dc I1'$F4',I2'&REST'
+ MEND
+ MACRO
+&lab _CloseWindow
+&lab ldx #$0B0E
+ jsl $E10000
+ MEND
+ MACRO
+&lab _DoModalWindow
+&lab ldx #$640E
+ jsl $E10000
+ MEND
+ MACRO
+&lab _NewWindow2
+&lab ldx #$610E
+ jsl $E10000
+ MEND
+ MACRO
+&lab _HLock
+&lab ldx #$2002
+ jsl $E10000
+ MEND
+ MACRO
+&lab _HUnlock
+&lab ldx #$2202
+ jsl $E10000
+ MEND
+ MACRO
+&lab _GetCtlHandleFromID
+&lab ldx #$3010
+ jsl $E10000
+ MEND
+ MACRO
+&lab _HideControl
+&lab ldx #$0E10
+ jsl $E10000
+ MEND
+ MACRO
+&lab _ShowControl
+&lab ldx #$0F10
+ jsl $E10000
+ MEND
+ MACRO
+&lab _SetLETextByID
+&lab ldx #$3A10
+ jsl $E10000
+ MEND
+ MACRO
+&lab _VersionString
+&lab ldx #$3903
+ jsl $E10000
+ MEND
+ MACRO
+&lab _Int2Dec
+&lab ldx #$260B
+ jsl $E10000
+ MEND
+ MACRO
+&lab _GetLETextByID
+&lab ldx #$3B10
+ jsl $E10000
+ MEND
+ MACRO
+&lab _Dec2Int
+&lab ldx #$280B
+ jsl $E10000
+ MEND
+ MACRO
+&lab _TCPIPPtrToPtr
+&lab ldx #$5536
+ jsl $E10000
+ MEND
+ MACRO
+&lab _AlertWindow
+&lab ldx #$590E
+ jsl $E10000
+ MEND
+ MACRO
+&lab pulllong &addr1,&addr2
+&lab ANOP
+ AIF C:&addr1=0,.a
+ AIF C:&addr2=0,.b
+ LCLC &C
+&C AMID &addr1,1,1
+ AIF "&C"="[",.zeropage
+ pullword &addr1
+ sta &addr2
+ pullword &addr1+2
+ sta &addr2+2
+ MEXIT
+.a
+ pullword
+ pullword
+ MEXIT
+.b
+ pullword &addr1
+ pullword &addr1+2
+ MEXIT
+.zeropage
+ ldy #&addr2
+ pullword &addr1,y
+ ldy #&addr2+2
+ pullword &addr1,y
+ MEND
+ MACRO
+&lab pullword &SYSOPR
+&lab ANOP
+ pla
+ AIF C:&SYSOPR=0,.end
+ sta &SYSOPR
+.end
+ MEND
+ MACRO
+&lab _ReadTimeHex
+&lab ldx #$0D03
+ jsl $E10000
+ MEND
+ MACRO
+&lab _Random
+&lab ldx #$8604
+ jsl $E10000
+ MEND
+ MACRO
+&lab _SetRandSeed
+&lab ldx #$8704
+ jsl $E10000
+ MEND
+ MACRO
+&lab _TCPIPSetConnectData
+&lab ldx #$1736
+ jsl $E10000
+ MEND
+ MACRO
+&lab _TCPIPSetDNS
+&lab ldx #$1D36
+ jsl $E10000
+ MEND
+ MACRO
+&lab _TCPIPConvertIPToASCII
+&lab ldx #$0E36
+ jsl $E10000
+ mend
+ MACRO
+&lab _GetCtlValue
+&lab ldx #$1A10
+ jsl $E10000
+ mend
+ MACRO
+&lab _TCPIPConvertIPToHex
+&lab ldx #$0D36
+ jsl $E10000
+ mend
+ MACRO
+&lab _TCPIPValidateIPString
+&lab ldx #$4836
+ jsl $E10000
+ mend
+ MACRO
+&lab shortx
+&lab ANOP
+ sep #%00010000
+ longi off
+ MEND
+ MACRO
+&lab longx
+&lab ANOP
+ rep #%00010000
+ longi on
+ MEND

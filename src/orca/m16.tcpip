@@ -1,0 +1,1092 @@
+********************************************
+* Marinetti tool macros
+*   by Richard Bennett
+*
+********************************************
+* 1998-09-01 RJB Original version
+* 2003-05-31 AJR Update to v2.1 of TCP/IP interfaces
+* 2008-01-14 AJR Add TCPIP[Get/Set]DNRTimeouts [1871032]
+********************************************
+
+            MACRO
+&lab        _TCPIPBootInit
+&lab        ldx                        #$0136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPStartUp
+&lab        ldx                        #$0236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPShutDown
+&lab        ldx                        #$0336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPVersion
+&lab        ldx                        #$0436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPReset
+&lab        ldx                        #$0536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPStatus
+&lab        ldx                        #$0636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPLongVersion
+&lab        ldx                        #$0836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetConnectStatus
+&lab        ldx                        #$0936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetErrorTable
+&lab        ldx                        #$0A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetReconnectStatus
+&lab        ldx                        #$0B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPReconnect
+&lab        ldx                        #$0C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPConvertIPToHex
+&lab        ldx                        #$0D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPConvertIPCToHex
+&lab        ldx                        #$3F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPConvertIPToASCII
+&lab        ldx                        #$0E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPConvertIPToCASCII
+&lab        ldx                        #$5836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetMyIPAddress
+&lab        ldx                        #$0F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetConnectMethod
+&lab        ldx                        #$1036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetConnectMethod
+&lab        ldx                        #$1136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPConnect
+&lab        ldx                        #$1236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPDisconnect
+&lab        ldx                        #$1336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetMTU
+&lab        ldx                        #$1436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetConnectData
+&lab        ldx                        #$1636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetConnectData
+&lab        ldx                        #$1736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetDisconnectData
+&lab        ldx                        #$1836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetDisconnectData
+&lab        ldx                        #$1936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPLoadPreferences
+&lab        ldx                        #$1A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSavePreferences
+&lab        ldx                        #$1B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetTuningTable
+&lab        ldx                        #$1E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetTuningTable
+&lab        ldx                        #$1F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetDNS
+&lab        ldx                        #$1C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetDNS
+&lab        ldx                        #$1D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPCancelDNR
+&lab        ldx                        #$2036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPDNRNameToIP
+&lab        ldx                        #$2136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPPoll
+&lab        ldx                        #$2236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPLogin
+&lab        ldx                        #$2336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPLogout
+&lab        ldx                        #$2436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSendICMP
+&lab        ldx                        #$2536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSendUDP
+&lab        ldx                        #$2636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetDatagramCount
+&lab        ldx                        #$2736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetNextDatagram
+&lab        ldx                        #$2836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetLoginCount
+&lab        ldx                        #$2936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSendICMPEcho
+&lab        ldx                        #$2A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPReceiveICMPEcho
+&lab        ldx                        #$2B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPOpenTCP
+&lab        ldx                        #$2C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPWriteTCP
+&lab        ldx                        #$2D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPReadTCP
+&lab        ldx                        #$2E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPCloseTCP
+&lab        ldx                        #$2F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPAbortTCP
+&lab        ldx                        #$3036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPStatusTCP
+&lab        ldx                        #$3136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetSourcePort
+&lab        ldx                        #$3236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetTOS
+&lab        ldx                        #$3336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetTOS
+&lab        ldx                        #$3436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetTTL
+&lab        ldx                        #$3536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetTTL
+&lab        ldx                        #$3636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetSourcePort
+&lab        ldx                        #$3736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSendIPDatagram
+&lab        ldx                        #$4036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPConvertIPToClass
+&lab        ldx                        #$4136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetConnectMsgFlag
+&lab        ldx                        #$4236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetConnectMsgFlag
+&lab        ldx                        #$4336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetUsername
+&lab        ldx                        #$4436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetUsername
+&lab        ldx                        #$4536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetPassword
+&lab        ldx                        #$4636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetPassword
+&lab        ldx                        #$4736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPValidateIPString
+&lab        ldx                        #$4836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPValidateIPCString
+&lab        ldx                        #$1536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetUserStatistic
+&lab        ldx                        #$4936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetLinkVariables
+&lab        ldx                        #$4A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPEditLinkConfig
+&lab        ldx                        #$4B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetModuleNames
+&lab        ldx                        #$4C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPListenTCP
+&lab        ldx                        #$4E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPAcceptTCP
+&lab        ldx                        #$4F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetNewDestination
+&lab        ldx                        #$5036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetHostName
+&lab        ldx                        #$5136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetHostName
+&lab        ldx                        #$5236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPStatusUDP
+&lab        ldx                        #$5336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetLinkLayer
+&lab        ldx                        #$5436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPPtrToPtr
+&lab        ldx                        #$5536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPPtrToPtrNeg
+&lab        ldx                        #$5636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetAuthMessage
+&lab        ldx                        #$5736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPMangleDomainName
+&lab        ldx                        #$5936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetAliveFlag
+&lab        ldx                        #$5A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetAliveFlag
+&lab        ldx                        #$5B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetAliveMinutes
+&lab        ldx                        #$5C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetAliveMinutes
+&lab        ldx                        #$5D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPReadLineTCP
+&lab        ldx                        #$5E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetBootConnectFlag
+&lab        ldx                        #$5F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetBootConnectFlag
+&lab        ldx                        #$6036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetUDPDispatch
+&lab        ldx                        #$6136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetDestination
+&lab        ldx                        #$6236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetUserEventTrigger
+&lab        ldx                        #$6336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetUserEventTrigger
+&lab        ldx                        #$6436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetSysEventTrigger
+&lab        ldx                        #$6536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetSysEventTrigger
+&lab        ldx                        #$6636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPGetDNRTimeouts                                ;v3.0
+&lab        ldx                        #$6736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        _TCPIPSetDNRTimeouts                                ;v3.0
+&lab        ldx                        #$6836
+            jsl                        $E10000
+            MEND
+
+            MACRO
+&lab        ~TCPIPBootInit
+&lab        ldx                        #$0136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPStartUp
+&lab        ldx                        #$0236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPShutDown
+&lab        ldx                        #$0336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPVersion
+&lab        ldx                        #$0436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPReset
+&lab        ldx                        #$0536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPStatus
+&lab        ldx                        #$0636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPLongVersion
+&lab        ldx                        #$0836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetConnectStatus
+&lab        ldx                        #$0936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetErrorTable
+&lab        ldx                        #$0A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetReconnectStatus
+&lab        ldx                        #$0B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPReconnect            &p1
+&lab        ph4                        &p1
+            ldx                        #$0C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPConvertIPToHex       &p1,&p2
+&lab        ph4                        &p1
+            ph4                        &p2
+            ldx                        #$0D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPConvertIPCToHex      &p1,&p2
+&lab        ph4                        &p1
+            ph4                        &p2
+            ldx                        #$3F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPConvertIPToASCII     &p1,&p2,&p3
+&lab        ph4                        &p1
+            ph4                        &p2
+            ph2                        &p3
+            ldx                        #$0E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPConvertIPToCASCII    &p1,&p2,&p3
+&lab        ph4                        &p1
+            ph4                        &p2
+            ph2                        &p3
+            ldx                        #$5836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetMyIPAddress
+&lab        ldx                        #$0F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetConnectMethod
+&lab        ldx                        #$1036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetConnectMethod     &p1
+&lab        ph2                        &p1
+            ldx                        #$1136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPConnect              &p1
+&lab        ph4                        &p1
+            ldx                        #$1236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPDisconnect           &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$1336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetMTU
+&lab        ldx                        #$1436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetConnectData       &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$1636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetConnectData       &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$1736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetDisconnectData    &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$1836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetDisconnectData    &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$1936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPLoadPreferences
+&lab        ldx                        #$1A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSavePreferences
+&lab        ldx                        #$1B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetTuningTable       &p1
+&lab        ph4                        &p1
+            ldx                        #$1E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetTuningTable       &p1
+&lab        ph4                        &p1
+            ldx                        #$1F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetDNS               &p1
+&lab        ph4                        &p1
+            ldx                        #$1C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetDNS               &p1
+&lab        ph4                        &p1
+            ldx                        #$1D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPCancelDNR            &p1
+&lab        ph4                        &p1
+            ldx                        #$2036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPDNRNameToIP          &p1,&p2
+&lab        ph4                        &p1
+            ph4                        &p2
+            ldx                        #$2136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPPoll
+&lab        ldx                        #$2236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPLogin                &p1,&p2,&p3,&p4,&p5
+&lab        ph2                        &p1
+            ph4                        &p2
+            ph2                        &p3
+            ph2                        &p4
+            ph2                        &p5
+            ldx                        #$2336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPLogout               &p1
+&lab        ph2                        &p1
+            ldx                        #$2436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSendICMP             &p1,&p2,&p3
+&lab        ph2                        &p1
+            ph4                        &p2
+            ph2                        &p3
+            ldx                        #$2536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSendUDP              &p1,&p2,&p3
+&lab        ph2                        &p1
+            ph4                        &p2
+            ph2                        &p3
+            ldx                        #$2636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetDatagramCount     &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$2736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetNextDatagram      &p1,&p2,&p3
+&lab        ph2                        &p1
+            ph2                        &p2
+            ph2                        &p3
+            ldx                        #$2836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetLoginCount
+&lab        ldx                        #$2936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSendICMPEcho         &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$2A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPReceiveICMPEcho      &p1
+&lab        ph2                        &p1
+            ldx                        #$2B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPOpenTCP              &p1
+&lab        ph2                        &p1
+            ldx                        #$2C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPWriteTCP             &p1,&p2,&p3,&p4,&p5
+&lab        ph2                        &p1
+            ph4                        &p2
+            ph4                        &p3
+            ph2                        &p4
+            ph2                        &p5
+            ldx                        #$2D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPReadTCP              &p1,&p2,&p3,&p4,&p5
+&lab        ph2                        &p1
+            ph2                        &p2
+            ph4                        &p3
+            ph4                        &p4
+            ph4                        &p5
+            ldx                        #$2E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPCloseTCP             &p1
+&lab        ph2                        &p1
+            ldx                        #$2F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPAbortTCP             &p1
+&lab        ph2                        &p1
+            ldx                        #$3036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPStatusTCP            &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$3136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetSourcePort        &p1
+&lab        ph2                        &p1
+            ldx                        #$3236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetTOS               &p1
+&lab        ph2                        &p1
+            ldx                        #$3336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetTOS               &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$3436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetTTL               &p1
+&lab        ph2                        &p1
+            ldx                        #$3536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetTTL               &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$3636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetSourcePort        &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$3736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSendIPDatagram       &p1
+&lab        ph4                        &p1
+            ldx                        #$4036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPConvertIPToClass     &p1
+&lab        ph4                        &p1
+            ldx                        #$4136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetConnectMsgFlag
+&lab        ldx                        #$4236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetConnectMsgFlag    &p1
+&lab        ph2                        &p1
+            ldx                        #$4336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetUsername          &p1
+&lab        ph4                        &p1
+            ldx                        #$4436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetUsername          &p1
+&lab        ph4                        &p1
+            ldx                        #$4536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetPassword          &p1
+&lab        ph4                        &p1
+            ldx                        #$4636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetPassword          &p1
+&lab        ph4                        &p1
+            ldx                        #$4736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPValidateIPString     &p1
+&lab        ph4                        &p1
+            ldx                        #$4836
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPValidateIPCString    &p1
+&lab        ph4                        &p1
+            ldx                        #$1536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetUserStatistic     &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$4936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetLinkVariables
+&lab        ldx                        #$4A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPEditLinkConfig       &p1,&p2
+&lab        ph4                        &p1
+            ph4                        &p2
+            ldx                        #$4B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetModuleNames
+&lab        ldx                        #$4C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPListenTCP            &p1
+&lab        ph2                        &p1
+            ldx                        #$4E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPAcceptTCP            &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$4F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetNewDestination    &p1,&p2,&p3
+&lab        ph2                        &p1
+            ph4                        &p2
+            ph2                        &p3
+            ldx                        #$5036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetHostName          &p1
+&lab        ph4                        &p1
+            ldx                        #$5136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetHostName          &p1
+&lab        ph4                        &p1
+            ldx                        #$5236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPStatusUDP            &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$5336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetLinkLayer         &p1
+&lab        ph4                        &p1
+            ldx                        #$5436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPPtrToPtr             &p1,&p2,&p3
+&lab        ph4                        &p1
+            ph4                        &p2
+            ph4                        &p3
+            ldx                        #$5536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPPtrToPtrNeg          &p1,&p2,&p3
+&lab        ph4                        &p1
+            ph4                        &p2
+            ph4                        &p3
+            ldx                        #$5636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetAuthMessage       &p1
+&lab        ph2                        &p1
+            ldx                        #$5736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPMangleDomainName     &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$5936
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetAliveFlag
+&lab        ldx                        #$5A36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetAliveFlag         &p1
+&lab        ph2                        &p1
+            ldx                        #$5B36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetAliveMinutes
+&lab        ldx                        #$5C36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetAliveMinutes      &p1
+&lab        ph2                        &p1
+            ldx                        #$5D36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPReadLineTCP          &p1,&p2,&p3,&p4,&p5,&p6
+&lab        ph2                        &p1
+            ph4                        &p2
+            ph2                        &p3
+            ph4                        &p4
+            ph4                        &p5
+            ph4                        &p6
+            ldx                        #$5E36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetBootConnectFlag
+&lab        ldx                        #$5F36
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetBootConnectFlag   &p1
+&lab        ph2                        &p1
+            ldx                        #$6036
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetUDPDispatch       &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$6136
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetDestination       &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$6236
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetUserEventTrigger  &p1,&p2
+&lab        ph2                        &p1
+            ph2                        &p2
+            ldx                        #$6336
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetUserEventTrigger  &p1,&p2,&p3
+&lab        ph2                        &p1
+            ph2                        &p2
+            ph4                        &p3
+            ldx                        #$6436
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetSysEventTrigger   &p1
+&lab        ph2                        &p1
+            ldx                        #$6536
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetSysEventTrigger   &p1,&p2
+&lab        ph2                        &p1
+            ph4                        &p2
+            ldx                        #$6636
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPGetDNRTimeouts       &p1                      ;v3.0
+&lab        ph4                        &p1
+            ldx                        #$6736
+            jsl                        $E10000
+            MEND
+            MACRO
+&lab        ~TCPIPSetDNRTimeouts       &p1                      ;v3.0
+&lab        ph4                        &p1
+            ldx                        #$6836
+            jsl                        $E10000
+            MEND
+

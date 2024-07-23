@@ -1,0 +1,46 @@
+// --------------------------------------------------------------------
+// Genesys created REZ defines
+// Simple Software Systems International, Inc.
+// APWREZ.SCG 1.2
+// --------------------------------------------------------------------
+
+// --- type $8029 defines
+
+#define R8029_00000001 $00000001
+
+// --- type $802A defines
+
+#define R802A_00000001 $00000001
+
+
+// --------------------------------------------------------------------
+// Genesys created REZ data code
+// Simple Software Systems International, Inc.
+// APWREZ.SCG 1.2
+// --------------------------------------------------------------------
+
+#include "types.rez"
+
+// --- rVersion Definitions
+
+resource rVersion (R8029_00000001, $0000) {
+	{ 2, 0, 4, release, 0},	// Apple IIgs Long Version
+	$0002,			// country code
+	"Uthernet II Link Layer",
+	"Copyright 2006-2019 Ewen Wannop"
+};
+
+// --- rComment Definitions
+
+resource rComment (R802A_00000001, $0000) {
+	"                               Uthernet v2.0.4"
+	"\$0D"
+	"                         Uthernet II Link Layer"
+	"\$0D"
+	"\$0D"
+	"          for Marinetti and the Uthernet II Card"
+	"\$0D"
+	"\$0D"
+	"        Technical help: spectrumdaddy@speccie.uk"
+};
+

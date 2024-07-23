@@ -1,0 +1,88 @@
+ MACRO
+&lab PopLong &DataAddr
+&lab PLA
+ STA &DataAddr
+ PLA
+ STA &DataAddr+2
+ MEND
+
+ MACRO
+ ldax &arg
+ lda &arg
+ ldx 1+(&arg)
+ mend
+
+ MACRO
+ stax &arg
+ sta &arg
+ mend
+
+ MACRO
+ write_page &page,&value
+ lda #&page/2
+ ldx #<&value
+ ldy #>&value
+ jsr cs_write_page
+ mend
+
+ MACRO
+&LAB MDS &N1,&N2
+ AIF "&N1"<>"\",.A
+&LAB ALIGN 256
+ MEXIT
+.A
+ LCLA &A
+&A SETA &N1
+ AIF C:&N2,.C
+ AIF &A<0,.B
+&LAB DS &A
+ MEXIT
+.B
+&LAB ORG *-&A
+ MEXIT
+.C
+&LAB DC &A.I1"&N2"
+ MEND
+ MACRO
+&LAB MX &N1
+&LAB ANOP
+ LONGA OFF
+ LONGI OFF
+ LCLA &A
+&A SETA &N1
+ AIF &A=0,.A
+ AIF &A=1,.B
+ AIF &A=2,.C
+ MEXIT
+.A
+ LONGA ON
+ LONGI ON
+ MEXIT
+.B
+ LONGI ON
+ MEXIT
+.C
+ LONGA ON
+ MEND
+
+ MACRO
+&LAB MX &N1
+&LAB ANOP
+ LONGA OFF
+ LONGI OFF
+ LCLA &A
+&A SETA &N1
+ AIF &A=0,.A
+ AIF &A=1,.B
+ AIF &A=2,.C
+ MEXIT
+.A
+ LONGA ON
+ LONGI ON
+ MEXIT
+.B
+ LONGI ON
+ MEXIT
+.C
+ LONGA ON
+ MEND
