@@ -23,6 +23,7 @@ cadify () {
 	ftype=$2
 	auxtype=$3
 	fname=${s##*/}
+	cp $s $BLDDIR/
 	echo "$fname=Type($ftype),AuxType($auxtype),VersionCreate(B8),MinVersion(FF),Access(E3),FolderInfo1(000000000000000000000000000000000000),FolderInfo2(000000000000000000000000000000000000)" > $BLDDIR/_FileInformation.txt
 	cadius addfile $DSK $PFX $BLDDIR/$fname
 }
@@ -34,9 +35,10 @@ orcafy ./src/orca/udcustom.macros B0 0003
 orcafy ./src/orca/m16.tcpip B0 0003
 orcafy ./src/orca/resources.src B0 0003
 orcafy ./src/orca/make B0 0006
+orcafy ./src/orca/make2 B0 0006
 
 # ewans copy
 orcafy ./src/orca/uthernet.macros B0 0003
 
 # finally, the udrive ll driver
-cadify ./src/merlin/udrive BC 4083
+cadify ./src/merlin/udnet BC 4083
