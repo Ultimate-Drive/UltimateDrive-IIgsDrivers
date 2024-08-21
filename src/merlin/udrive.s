@@ -210,6 +210,12 @@ versok
                         pha
                         _GetPort
 
+                        ldx #15
+clear_loop                                          ; flush the buffer
+                        stz work_buffer,x
+                        dex
+                        dex
+                        bpl clear_loop
 
 
 ; open up the dialog window
@@ -341,9 +347,9 @@ _modal_chk_save         cmp save_id
                         beq letsgo
                         bra modalloop
 
-letsgo
+letsgo                  
                         PushLong cfghandle
-                        _HUnlock
+                        _HLock
                         lda	[cfghandle]	; use the handle to get the address of the config area
                         sta	cfgptr
                         ldy	#2
@@ -392,7 +398,7 @@ mtu_ok
                         pha
                         pha
                         PushLong ourwindow
-                        PushLong #$e	; dhcp checkbox
+                        PushLong #$b	; dhcp checkbox
                         _GetCtlHandleFromID
                         _GetCtlValue
                         pla
@@ -405,7 +411,7 @@ mtu_ok
 
 non_dhcp               
                         PushLong ourwindow
-                        PushLong #$a                ; ip address control id
+                        PushLong #$4                ; ip address control id
                         PushLong #work_buffer
                         _GetLETextByID
                         pha
@@ -427,7 +433,7 @@ ip_ok
                         sta [cfgptr],y
 
                         PushLong ourwindow
-                        PushLong #$b                ; netmask control id
+                        PushLong #$6                ; netmask control id
                         PushLong #work_buffer
                         _GetLETextByID
                         pha
@@ -449,7 +455,7 @@ netm_ok
                         sta [cfgptr],y
 
                         PushLong ourwindow
-                        PushLong #$c                ; gateway control id
+                        PushLong #$8                ; gateway control id
                         PushLong #work_buffer
                         _GetLETextByID
                         pha
@@ -481,9 +487,6 @@ configexit
                         PushLong cfghandle
                         _HUnlock
 
-                        * brk $ff
-
-
                         pla
                         sta 7,s
                         pla
@@ -501,7 +504,7 @@ show_alert
                         pea   $0051
                         pea	0
                         pea	0
-                        PushLong #alertstr
+                        PushLong #testalert2
                         _AlertWindow	; warn that an invalid string was entered
                         pla
 
@@ -568,6 +571,14 @@ response_buffer         ds 4
 
 alertstr                str '/Invalid value entered!/^#4'
                         hex 00
+
+testalert2 ASC '63~Invalid value entered!/^#4',0D0D
+ ASC '~^#0'
+ DFB 0
+testalert ASC '63~UltimateDrive Link Layer',0D0D
+ ASC 'Copyright (c) 2024 by Dagen Brock',0D0D
+ ASC '~^#0'
+ DFB 0
 
 ; my direct space on marinetti's direct page $E0-$FF available
 * tmppkthandle gequ $e0
