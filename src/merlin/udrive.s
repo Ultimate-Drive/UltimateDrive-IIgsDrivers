@@ -374,6 +374,8 @@ letsgo
                         cmp	#1601
                         bcc mtu_ok
 mtu_bad 
+                        ldx #configAlertMtuStr
+                        ldy #^configAlertMtuStr
 	                    brl	show_alert
 mtu_ok 
                         ldy	#28
@@ -419,6 +421,8 @@ non_dhcp
                         _TCPIPValidateIPString
                         pla
                         bne ip_ok
+                        ldx #configAlertIPStr
+                        ldy #^configAlertIPStr
                         brl show_alert
 ip_ok                   
                         PushLong #response_buffer
@@ -441,6 +445,8 @@ ip_ok
                         _TCPIPValidateIPString
                         pla
                         bne netm_ok
+                        ldx #configAlertNmStr
+                        ldy #^configAlertNmStr
                         brl show_alert
 netm_ok                 
                         PushLong #response_buffer
@@ -463,6 +469,8 @@ netm_ok
                         _TCPIPValidateIPString
                         pla
                         bne gate_ok
+                        ldx #configAlertGwStr
+                        ldy #^configAlertGwStr
                         brl show_alert
 gate_ok                 
                         PushLong #response_buffer
@@ -479,7 +487,6 @@ gate_ok
 dhcp_ok                 
 
 configexit              
-
                         PushLong ourwindow
                         _CloseWindow
                         _SetPort
@@ -497,14 +504,15 @@ configexit
                         rtl
 
 
-	
-show_alert 
-
+show_alert              stx alert_strp2+1
+                        sty alert_strp+1
                         pha
                         pea   $0051
                         pea	0
                         pea	0
-                        PushLong #testalert2
+                        *   PushLong #configAlertIPStr
+alert_strp              pea 0
+alert_strp2              pea 0
                         _AlertWindow	; warn that an invalid string was entered
                         pla
 
@@ -569,14 +577,21 @@ udconfigfname
 work_buffer             ds  17
 response_buffer         ds 4
 
-alertstr                str '/Invalid value entered!/^#4'
-                        hex 00
+configAlertIPStr     asc '63~Invalid value entered for IP Address.',0D0D
+                    asc '~^#4',00
+configAlertGwStr     asc '63~Invalid value entered for Gateway.',0D0D
+                    asc '~^#4',00
+configAlertNmStr     asc '63~Invalid value entered for Netmask.',0D0D
+                    asc '~^#4',00
+configAlertMtuStr     asc '63~Invalid value entered for MTU.',0D0D
+                    asc 'Valid values are 576 - 1600.'
+                    asc '~^#4',00
 
-testalert2 ASC '63~Invalid value entered!/^#4',0D0D
- ASC '~^#0'
- DFB 0
+
+* Not used... yet ;)
 testalert ASC '63~UltimateDrive Link Layer',0D0D
- ASC 'Copyright (c) 2024 by Dagen Brock',0D0D
+ ASC 'Copyright (c) 2024 by UltimateDrive Team',0D,
+ asc  '                    Dagen Brock & Phil Timmes',0D
  ASC '~^#0'
  DFB 0
 
