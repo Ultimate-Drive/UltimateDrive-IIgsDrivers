@@ -52,7 +52,7 @@ routines                dw  UDLinkInterfaceV
                         dw  uddisconnect
                         dw  udgetvariables
                         dw  UDLinkConfigure
-                        dw  udconfigfname
+                        dw  UDLinkConfigFileName
 
 
 * Returns the maximum link layer module interface which this link layer module supports.
@@ -515,11 +515,48 @@ alert_strp              pea 0
 alert_strp2              pea 0
                         _AlertWindow	; warn that an invalid string was entered
                         pla
-
+ 
                         brl	modalloop
 	
 
                         brl :okaaaa
+
+* I don't see how this is supposed to work.  [4] isn't being managed right
+* but this is what the other sources have been doing. 
+* Is this call not yet in use?  UDLinkConfigure doesn't seem to need it.
+* I'm marking as done though I believe that "[4]" is buggy. 
+* @todo: check marinetti code for relevance
+UDLinkConfigFileName
+                        TSC
+                        PHD
+                        TCD
+                        SEP $30
+                        LDA >:CONFIGFNAME
+                        TAX
+]L1                     LDA >:CONFIGFNAME,X
+                        TXY
+                        STA [4],Y
+                        DEX
+                        BPL ]L1
+                        REP $30
+                        PLD
+                        PHB
+                        PLA
+                        STA 3,S
+                        PLA
+                        STA 3,S
+                        PLB
+                        LDA #terrok
+                        CLC
+                        RTL
+
+:CONFIGFNAME STR 'UDRIVE.config'
+
+
+
+
+
+
 ourwindow               ds  4
 
 
@@ -569,7 +606,7 @@ udreconstatus
 udreconnect
 uddisconnect
 udgetvariables
-udconfigfname
+
 :okaaaa                 lda #terrok
                         clc
                         rtl
