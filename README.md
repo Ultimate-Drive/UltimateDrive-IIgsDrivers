@@ -15,7 +15,7 @@ Currently implemented Link Layer calls:
 - UDLinkModuleInfo      [DONE]
 - udgetpacket           [NOT STARTED]
 - udsendpacket          [NOT STARTED]
-- udconnect             [NOT STARTED]
+- UDLinkConnect         [in progress, starts up and get MAC]
 - udreconstatus         [NOT STARTED]
 - udreconnect           [NOT STARTED]
 - uddisconnect          [NOT STARTED]

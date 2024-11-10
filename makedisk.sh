@@ -42,3 +42,7 @@ orcafy ./src/orca/uthernet.macros B0 0003
 
 # finally, the udrive ll driver
 cadify ./src/merlin/udnet BC 4083
+
+#udnetdlg.res=Type(5E),AuxType(0001),
+cadius addfile $DSK $PFX ./src/merlin/udnetdlg.res 
+

@@ -20,7 +20,8 @@
 * My Notes:
 * - First call during boot:              m=0 a=0 x=0 y=3112     interfacev
 * - Second call after returning version: m=0 a=0 x=6 y=3112     moduleinfo
-***************************************
+*****************************************************************
+
 
 *                        XPL
                         mx  %00
@@ -28,23 +29,13 @@
                         TYP $BC
 
                         LNK udnet.l                 ;
-terrok                  equ $0000
-terrlinkerror           equ $0004+$3600
-terrnoreconsupprt       equ $0014+$3600             ;this module doesn't support reconnect
-terruseraborted         equ $0015+$3600
-terrmask                equ $00ff
 
-parmstack               equ 4
-parmstackb              equ 1+parmstack
-
-myllintvers             equ 2
 
 entry                   brl udriveok
                         dw  $7771
                         str 'UltimateDrive'         ; just for debugging? not sure if needed
 
-udriveok                nop
-                        nop                      
+udriveok
                         jmp (routines,x)
 
 routines                dw  UDLinkInterfaceV
@@ -79,6 +70,7 @@ intvok                  nop
 * Starts the link layer module once it is loaded. The module should
 * perform any initialisation tasks short of actually starting a connection.
 UDLinkStartup
+                        jsr UDDetectSlot
 UDLinkShutdown
                         brl :okaaaa
 
@@ -135,10 +127,16 @@ ll_vers                 adrl #$1
 ll_flags                dw  0
 UDLinkModuleInfoDataL   =   *-UDLinkModuleInfoData
 
-
+** UDLinkConfigure
+**  Presents a window allowing the user to edit configuration parameters
+**  required by the link layer module. This call is currently only made
+**  by the Control Panel, but may be made by other applications which
+**  may control Marinetti’s setup.
+*
 * Marinetti 3.0 Programmers’ Guide Page 150-151
-* When called, the desktop will be displayed, and the following tool sets will guarantee to have been started.
-* Other tool sets may have also been started, but the module should check before using them and start them
+* When called, the desktop will be displayed, and the following tool sets
+* will guarantee to have been started. Other tool sets may have also been
+* started, but the module should check before using them and start them
 * if necessary, and shut them down again on exit.
 *   Tool Set Name           Tool Set No.
 *   Tool Locator            #01 $01
@@ -182,7 +180,7 @@ UDLinkConfigure         phb
                         sta cfgptr+2                ; now cfgptr points to actual config area
                         lda [cfgptr]                ; test first word should match the config version
                         cmp #cfgvers                ;check version
-                        beq versok
+                        *   beq                     versok
 
 zerolen                                             ; CREATE new config
                         PushLong #cfglen
@@ -204,14 +202,14 @@ versok
 
 
 ; get the slot number and dhcp setting
-                        * ldy #20			; slot number
-                        * lda [cfgptr],y
-                        * ora	#$0100	; menu id offset
-                        * sta	popupid
+                        ; ldy  #20          ; slot number
+                        ; lda  [cfgptr],y
+                        ; ora  #$0100       ; menu id offset
+                        ; sta  popupid
 
-                        ldy #22			; dhcp flag
+                        ldy #22                     ; dhcp flag
                         lda [cfgptr],y
-                        sta	dhcp_val
+                        sta dhcp_val
 
                         pha
                         pha
@@ -354,15 +352,15 @@ _modal_chk_save         cmp save_id
                         beq letsgo
                         bra modalloop
 
-letsgo                  
+letsgo
                         PushLong cfghandle
                         _HLock
-                        lda	[cfghandle]	; use the handle to get the address of the config area
-                        sta	cfgptr
-                        ldy	#2
-                        lda	[cfghandle],y
-                        sta	cfgptr+2
-	
+                        lda [cfghandle]             ; use the handle to get the address of the config area
+                        sta cfgptr
+                        ldy #2
+                        lda [cfghandle],y
+                        sta cfgptr+2
+
 ; now get back and store the returned values
 
                         PushLong ourwindow
@@ -372,53 +370,53 @@ letsgo
 
                         pha
                         PushLong #work_buffer+1
-                        pea	4
-                        pea	0
+                        pea 4
+                        pea 0
                         _Dec2Int
                         pla
-                        cmp	#576
-                        bcc	mtu_bad
-                        cmp	#1601
+                        cmp #576
+                        bcc mtu_bad
+                        cmp #1601
                         bcc mtu_ok
-mtu_bad 
+mtu_bad
                         ldx #configAlertMtuStr
                         ldy #^configAlertMtuStr
-	                    brl	show_alert
-mtu_ok 
-                        ldy	#28
-                        sta	UDConfiguration+28
+                        brl show_alert
+mtu_ok
+                        ldy #28
+                        sta UDConfiguration+28
                         sta MarinettiVariables+lvmtu
                         sta [cfgptr],y
 
-                        ; SLOT
-                        * pha
-                        * pha
-                        * pha
-                        * PushLong ourwindow
-                        * PushLong #9	; menu popup id
-                        * _getctlhandlefromid
-                        * _getctlvalue
-                        * pla
-                        * and	#$ff
-                        * ldy #20			; slot number
-                        * sta [cfgptr],y
+                                                    ; SLOT
+                        ; pha
+                        ; pha
+                        ; pha
+                        ; PushLong ourwindow
+                        ; PushLong #9	; menu popup id
+                        ; _getctlhandlefromid
+                        ; _getctlvalue
+                        ; pla
+                        ; and	#$ff
+                        ; ldy #20			; slot number
+                        ; sta [cfgptr],y
 
                         pha
                         pha
                         pha
                         PushLong ourwindow
-                        PushLong #$b	; dhcp checkbox
+                        PushLong #$b                ; dhcp checkbox
                         _GetCtlHandleFromID
                         _GetCtlValue
                         pla
-                        ldy #22			; dhcp flag
+                        ldy #22                     ; dhcp flag
                         sta [cfgptr],y
-                        cmp	#0
-                        beq	non_dhcp
-                        brl	dhcp_ok
+                        cmp #0
+                        beq non_dhcp
+                        brl dhcp_ok
 
 
-non_dhcp               
+non_dhcp
                         PushLong ourwindow
                         PushLong #$4                ; ip address control id
                         PushLong #work_buffer
@@ -431,7 +429,7 @@ non_dhcp
                         ldx #configAlertIPStr
                         ldy #^configAlertIPStr
                         brl show_alert
-ip_ok                   
+ip_ok
                         PushLong #response_buffer
                         PushLong #work_buffer
                         _TCPIPConvertIPToHex
@@ -455,7 +453,7 @@ ip_ok
                         ldx #configAlertNmStr
                         ldy #^configAlertNmStr
                         brl show_alert
-netm_ok                 
+netm_ok
                         PushLong #response_buffer
                         PushLong #work_buffer
                         _TCPIPConvertIPToHex
@@ -479,7 +477,7 @@ netm_ok
                         ldx #configAlertGwStr
                         ldy #^configAlertGwStr
                         brl show_alert
-gate_ok                 
+gate_ok
                         PushLong #response_buffer
                         PushLong #work_buffer
                         _TCPIPConvertIPToHex
@@ -491,9 +489,9 @@ gate_ok
                         lda response_buffer+2
                         sta [cfgptr],y
 
-dhcp_ok                 
+dhcp_ok
 
-configexit              
+configexit
                         PushLong ourwindow
                         _CloseWindow
                         _SetPort
@@ -514,24 +512,24 @@ configexit
 show_alert              stx alert_strp2+1
                         sty alert_strp+1
                         pha
-                        pea   $0051
-                        pea	0
-                        pea	0
-                        *   PushLong #configAlertIPStr
+                        pea $0051
+                        pea 0
+                        pea 0
+                        *   PushLong                #configAlertIPStr
 alert_strp              pea 0
-alert_strp2              pea 0
-                        _AlertWindow	; warn that an invalid string was entered
+alert_strp2             pea 0
+                        _AlertWindow                ; warn that an invalid string was entered
                         pla
- 
-                        brl	modalloop
-	
+
+                        brl modalloop
+
 
                         brl :okaaaa
 
 * I don't see how this is supposed to work.  [4] isn't being managed right
-* but this is what the other sources have been doing. 
+* but this is what the other sources have been doing.
 * Is this call not yet in use?  UDLinkConfigure doesn't seem to need it.
-* I'm marking as done though I believe that "[4]" is buggy. 
+* I'm marking as done though I believe that "[4]" is buggy.
 * @todo: check marinetti code for relevance
 UDLinkConfigFileName
                         TSC
@@ -557,13 +555,12 @@ UDLinkConfigFileName
                         CLC
                         RTL
 
-:CONFIGFNAME STR 'UDRIVE.config'
+:CONFIGFNAME            STR 'UDRIVE.config'
 
 
 
 
-UDLinkConnect
-
+UDLinkConnect           mx %00
                         phb                         ;push data bank register
                         phk                         ;push program bank register
                         plb                         ;pull databank register
@@ -572,8 +569,8 @@ UDLinkConnect
                         lda #terruseraborted
                         sta err_return
 
-                        stz MarinettiVariables+lverrors      ; start with a clean slate
-                        stz MarinettiVariables+lvipaddress   ;
+                        stz MarinettiVariables+lverrors ; start with a clean slate
+                        stz MarinettiVariables+lvipaddress ;
                         stz MarinettiVariables+lvipaddress+2
                         lda cfg_mtu                 ; 1460 byte mtu default
                         sta MarinettiVariables+lvmtu
@@ -588,9 +585,8 @@ showokk                 lda parmstackb+4,s          ; get the display pointer an
                         lda parmstackb+4+1,s        ; **** SHOULD BE TWO BY CMD LIKE A3 0A
                         sta displayptr+1+1
                         lda #linkstrs               ; connection started
-                        * jsr showpstring
-joinn                   
-
+                        jsr showpstring
+joinn
                         lda parmstackb,s            ; get handle to config space low
                         sta cfghandle
                         lda parmstackb+2,s          ; get handle to config space high
@@ -612,47 +608,40 @@ joinn
 ; we need to copy in the previous saved config or set one up for the first time
 ; use the config area to see what marinetti has for us to use
 ;
-; configuration is our working copy of the config
+; cfgptr configuration is our working copy of the config
 ;
                         lda [cfgptr]                ; test first word should match the config version
                         cmp #cfgvers
                         beq docfg                   ; on to the target address
 
 ; we havn't set one yet so use the defaults and report we can't start
-newconfig               
+newconfig
 
-                        * pea defaultcfg|-16          ; source address for the copy - low
-                        * pea defaultcfg              ;                             - high
-                        * pea UDConfiguration|-16       ; target address for the copy - low
-                        * pea UDConfiguration           ; target address for the copy - high
-                        * pea cfglen|-16              ; cfglen how many bytes to copy
-                        * pea cfglen
-                        PushLong UDDefaultCfg
-                        PushLong UDConfiguration
-                        PushLong cfglen
+                        PushLong #UDDefaultCfg
+                        PushLong #UDConfiguration
+                        PushLong #cfglen
                         _TCPIPPtrToPtr              ; copy data routine
 
                         brl err
 
-docfg                   
-
+docfg
                         pei cfgptr+2                ; source address for the copy - low
                         pei cfgptr                  ;                             - high
-                        * pea UDConfiguration|-16       ; target address for the copy - low
-                        * pea UDConfiguration           ; target address for the copy - high
-                        * pea cfglen|-16              ; cfglen how many bytes to copy
-                        * pea cfglen
-                        PushLong UDConfiguration
-                        PushLong cfglen
+                        PushLong #UDConfiguration
+                        PushLong #cfglen
                         _TCPIPPtrToPtr              ; copy data routine
 
-                        lda UDConfiguration+28        ; 1460 byte mtu default
+                        lda UDConfiguration+28      ; 1460 byte mtu default
                         sta MarinettiVariables+lvmtu
+
+                        jsr UDDetectSlot            ; SLOT FIXUP!  This detects on each connect
+                        jsr UDGetSlot               ; Not sure if this is the best design, but should always work
+                        sta UDConfiguration+20
 
 ;
 ; so now that we have a copy of our configuration data lets start to get the card going
-;
 
+* I believe this is prep for dhcp negotiation (DB)
                         pha                         ; seed the random number generator
                         pha
                         pha
@@ -666,6 +655,8 @@ docfg
                         phx
                         _SetRandSeed
 
+
+                        DO 0
                         lda UDConfiguration+20
                         asl a
                         asl a
@@ -675,7 +666,7 @@ docfg
                         sta wiz_slot_offset
 
                         ldx #0
-wiz_1                                           ; Fixup address at location
+wiz_1                                            ; Fixup address at location
                         lda fixup,x
                         sta ap
                         lda (ap)
@@ -693,7 +684,7 @@ wiz_1                                           ; Fixup address at location
 ; S/W Reset
                         lda #$80
 fixup01                 sta >mode
-wiz_3                   
+wiz_3
 fixup02                 lda >mode
                         bmi wiz_3
 
@@ -725,10 +716,10 @@ fixup06                 sta >data
                         ldy #$12                    ; Lobyte socket 0
                         jsr set_addr
                         sec
-                        lda MarinettiVariables+lvmtu         ; mtu lo
+                        lda MarinettiVariables+lvmtu ; mtu lo
                         sbc #40
                         tax
-                        lda MarinettiVariables+lvmtu+1       ; mtu hi
+                        lda MarinettiVariables+lvmtu+1 ; mtu hi
                         sbc #0
 fixup30                 sta >data
                         txa
@@ -744,17 +735,21 @@ fixup07                 sta >data
 fixup08                 sta >data
 
                         rep $30
+                        FIN
 
-                        lda UDConfiguration+22        ; do we try dhcp to request an ip address
+
+                        jsr UDDetectMac             ; THIS starts the w5500 & ethernet link & gets MAC
+                        brk $55                     ; nothing is done beyond here
+                        lda UDConfiguration+22      ; do we try dhcp to request an ip address
                         beq no_dhcp
 
 * jsr request_dhcp            ; go and try to get one
                         bcs no_dhcp                 ; do not save it if we did not get one
 
                         ldy #2                      ; copy our ip address, mask, gateway to parms
-copy_tmp                
+copy_tmp
                         lda tmp_ip-2,y
-                        sta UDConfiguration,y         ; keep it locally
+                        sta UDConfiguration,y       ; keep it locally
                         iny
                         iny
                         cpy #14
@@ -767,7 +762,7 @@ copy_tmp
                         PushLong #tmp_dns           ; copy the new dns back to marinetti
                         _TCPIPSetDNS
 
-mtu_offered             
+mtu_offered
 
                         lda tmp_mtu                 ; did the server tell us its mtu size
                         beq no_dhcp
@@ -775,7 +770,7 @@ mtu_offered
                         bcs no_dhcp
                         sta MarinettiVariables+lvmtu
 
-no_dhcp                 
+no_dhcp
 
                         lda #wizversl               ; copy our version marker as it may have changed
                         sta UDConfiguration+24
@@ -792,7 +787,7 @@ no_dhcp
                         _NewHandle
                         PullLong temphandle
 
-                        PushLong #UDConfiguration     ; copy the data to the handle
+                        PushLong #UDConfiguration   ; copy the data to the handle
                         PushLong temphandle
                         PushLong #cfglen
                         _PtrToHand
@@ -801,30 +796,30 @@ no_dhcp
                         PushLong temphandle
                         _TCPIPSetConnectData
 
-                        lda UDConfiguration+2         ; cfgip offset = 2
+                        lda UDConfiguration+2       ; cfgip offset = 2
                         sta MarinettiVariables+lvipaddress
-                        lda UDConfiguration+2+2    ; cfgip offset = 2
+                        lda UDConfiguration+2+2     ; cfgip offset = 2
                         sta MarinettiVariables+lvipaddress+2
 
-                        lda UDConfiguration+6         ; cfgipmask offset = 6
+                        lda UDConfiguration+6       ; cfgipmask offset = 6
                         sta ipmask                  ; zero page var
-                        lda UDConfiguration+6+2    ; cfgipmask offset = 6
+                        lda UDConfiguration+6+2     ; cfgipmask offset = 6
                         sta ipmask+2
 
-                        lda UDConfiguration+10        ; cfgipgw offset = 10
+                        lda UDConfiguration+10      ; cfgipgw offset = 10
                         sta ipgw                    ; zero page var
-                        lda UDConfiguration+10+2   ; cfgipgw offset = 10
+                        lda UDConfiguration+10+2    ; cfgipgw offset = 10
                         sta ipgw+2
 
                         lda #setmacstr              ; display our connect data
-                        * jsr showpstring
+                        *   jsr                     showpstring
 
 ; initialize arp
 
                         sep $30
 
                         lda #0
-                        ldx #6+4*ac_size-1        ; clear cache
+                        ldx #6+4*ac_size-1          ; clear cache
 clr                     sta arp_cache,x
                         dex
                         bpl clr
@@ -833,7 +828,7 @@ clr                     sta arp_cache,x
                         sta gw_last
 
                         ldx #3
-gw                      
+gw
                         lda ipmask,x
                         eor #$ff
                         cmp #$ff
@@ -906,24 +901,24 @@ err                     rep $30
                         rtl
 
 
-setmacstr               str 'MAC                    address initialized '
-linkstrs                str 'Starting               UthernetII driver'
+setmacstr               str 'MAC address initialized '
+linkstrs                str 'Starting UltimateDrive Network Driver'
 
-reg                     dw  0                    ; register
-len                     dw  0                    ; Packet length counter
-adv                     dw  0                    ; Data pointer advancement
-bas                     dw  0                    ; register base memory
+reg                     dw  0                       ; register
+len                     dw  0                       ; Packet length counter
+adv                     dw  0                       ; Data pointer advancement
+bas                     dw  0                       ; register base memory
 
 err_return              ds  2
 temphandle              ds  4
 wiz_slot_offset         dw  $0040
 
-fixup                   da fixup01+1,fixup02+1,fixup03+1,fixup04+1,fixup05+1,fixup06+1
-                        da fixup07+1,fixup08+1,fixup09+1,fixup10+1,fixup11+1,fixup12+1
-                        da fixup13+1,fixup14+1,fixup16+1,fixup17+1,fixup18+1,fixup19+1
-                        da fixup20+1,fixup22+1,fixup23+1,fixup24+1,fixup25+1,fixup26+1
-                        da fixup27+1,fixup28+1,fixup29+1,fixup30+1,fixup31+1
-fixups                  equ *-fixup
+* fixup                   da  fixup01+1,fixup02+1,fixup03+1,fixup04+1,fixup05+1,fixup06+1
+*                         da  fixup07+1,fixup08+1,fixup09+1,fixup10+1,fixup11+1,fixup12+1
+*                         da  fixup13+1,fixup14+1,fixup16+1,fixup17+1,fixup18+1,fixup19+1
+*                         da  fixup20+1,fixup22+1,fixup23+1,fixup24+1,fixup25+1,fixup26+1
+*                         da  fixup27+1,fixup28+1,fixup29+1,fixup30+1,fixup31+1
+* fixups                  equ *-fixup
 
 
 
@@ -942,8 +937,8 @@ fixup12                 lda >data
 wiz_5                   rep $30
                         sec
                         rts
-                        
-                        mx %11
+
+                        mx  %11
 ; Socket 0 RX Received Size Register: != 0 ?
 wiz_6                   ldy #$26                    ; Socket RX Received Size Register
                         jsr set_addrsocket0
@@ -991,10 +986,10 @@ fixup14                 ora >data                   ; Lobyte
                         bra wiz_8                   ; Always
 
 ; Read data
-wiz_7                   
-                        rep $10 ;shortm
+wiz_7
+                        rep $10                     ;shortm
                         ldx #0
-wiz_13                  
+wiz_13
 fixup17                 lda >data
                         sta eth_inp,x
                         inx
@@ -1002,12 +997,12 @@ fixup17                 lda >data
                         bcc wiz_13
 
 ; Set parameters for common code
-wiz_8                   
+wiz_8
                         sep $30
                         lda #$40                    ; RECV
                         ldy #$28                    ; Socket 0 RX Read Pointer Register
                         jsr common
-                        mx %00
+                        mx  %00
 
                         clc
                         rts
@@ -1015,7 +1010,7 @@ wiz_8
 *-------------------------------------------------
 ; send a packet
 
-eth_tx                  
+eth_tx
                         jsr timer_read              ; read current timer value
                         clc
                         adc #0300                   ; set timeout to now+5000 ms
@@ -1037,17 +1032,17 @@ wiz_9                   anop
                         jsr set_addrcmdreg0
 fixup18                 lda >data
                         beq wiz_10
-                        rep $30 
+                        rep $30
                         jsr timer_read              ; read current timer value
                         cmp packettimeout
                         bcc wiz_9
                         sec
                         rts
 
-                        mx %11
+                        mx  %11
 
 ; Socket 0 TX Free Size Register: < length ?
-wiz_10                  
+wiz_10
                         ldy #$20                    ; Socket TX Free Size Register
                         jsr set_addrsocket0
 fixup19                 lda >data                   ; Hibyte
@@ -1069,9 +1064,9 @@ fixup20                 lda >data                   ; Lobyte
                         jsr set_addrphysical
 
 ; Write data
-                        rep $10 ; longx
+                        rep $10                     ; longx
                         ldx #0
-wiz_14                  
+wiz_14
                         lda eth_outp,x
 fixup23                 sta >data
                         inx
@@ -1105,7 +1100,7 @@ fixup26                 sta >data
 
 
 ;---------------------------------------------------------------------
-                        mx %11
+                        mx  %11
 set_addrphysical
 fixup27                 lda >data                   ; Hibyte
                         pha
@@ -1148,13 +1143,13 @@ wiz_11                  rts
 
 
 ; Setup variables in zero page
-set_parameters         
-	stz	bas
-	sta bas+1		; Socket Base Address
-	clc
-	adc #>$2000		; Socket memory size
-	rts
-	
+set_parameters
+                        stz bas
+                        sta bas+1                   ; Socket Base Address
+                        clc
+                        adc #>$2000                 ; Socket memory size
+                        rts
+
 
 
 showpstring
@@ -1183,103 +1178,103 @@ displayptr
 
 
 ; return the current value
-timer_read	
-	pha
-	pha
-	_TickCount
-	PullLong tick_count_cur
+timer_read
+                        pha
+                        pha
+                        _TickCount
+                        PullLong tick_count_cur
 ; how many ticks have tocked since the last tick did tock
-	SUB4 	tick_count_cur;tick_count_start;tick_temp
-	lda	tick_temp
+                        SUB4 tick_count_cur;tick_count_start;tick_temp
+                        lda tick_temp
 ; more than 60 (1 second)
-	cmp	#60
-	bcc	ret
-	ADD4 	tick_count_start;60
-	SUB4    tick_temp;60
-	lda 	tick_temp
-ret	
-	rts
-	
+                        cmp #60
+                        bcc ret
+                        ADD4 tick_count_start;60
+                        SUB4 tick_temp;60
+                        lda tick_temp
+ret
+                        rts
+
 ; we can't use tickcount during dhcp negotiation, as the event manager has not yet been started
 ; but we can use the clock, with some more elaborate code...
 ; return current elapsed time in seconds, accounting for midnight rollover
 ; we are not going to be more than 60 seconds in here, so we will not span two days!
-timer_read2	
+timer_read2
 
-	pha
-	pha
-	pha
-	pha
-	_ReadTimeHex
-	pla	; read mins and secs
-	sta	tick_temp
-	pla	; read hour and year
-	sta	tick_temp+2
-	plx	; throw dates
-	plx	; throw dates
-	and	#$ff	; hours
-	asl	a
-	asl	a
-	sta	tick_temp+4
-	asl	a
-	asl	a
-	asl	a
-	asl	a
-	sec
-	sbc	tick_temp+4
-	sta	timer	; we have minutes
-	lda	tick_temp+1	; mins
-	and	#$ff
-	asl	a
-	asl	a
-	sta	tick_temp+4
-	asl	a
-	asl	a
-	asl	a
-	asl	a
-	sec
-	sbc	tick_temp+4
-	clc
-	adc timer
-	sta	timer	; we have seconds
-	lda	timer+2
-	adc	#$00
-	sta	timer+2
-	lda	tick_temp
-	and	#$ff
-	clc
-	adc	timer
-	sta	timer	; total current seconds since midnight
-	lda	timer+2
-	adc	#$00
-	sta	timer+2
-	
-tr_loop 
-	sec
-	lda	timer
-	sbc	start_time
-	tax
-	lda	timer+2
-	sbc	start_time+2
-	bpl tr_exit
-	clc
-	lda	timer
-	adc	#<86400	; seconds in a day
-	sta	timer
-	lda	timer+2
-	adc	#>86400
-	sta	timer+2
-	bra	tr_loop	
-tr_exit 
-	txa
-	rts	
+                        pha
+                        pha
+                        pha
+                        pha
+                        _ReadTimeHex
+                        pla                         ; read mins and secs
+                        sta tick_temp
+                        pla                         ; read hour and year
+                        sta tick_temp+2
+                        plx                         ; throw dates
+                        plx                         ; throw dates
+                        and #$ff                    ; hours
+                        asl a
+                        asl a
+                        sta tick_temp+4
+                        asl a
+                        asl a
+                        asl a
+                        asl a
+                        sec
+                        sbc tick_temp+4
+                        sta timer                   ; we have minutes
+                        lda tick_temp+1             ; mins
+                        and #$ff
+                        asl a
+                        asl a
+                        sta tick_temp+4
+                        asl a
+                        asl a
+                        asl a
+                        asl a
+                        sec
+                        sbc tick_temp+4
+                        clc
+                        adc timer
+                        sta timer                   ; we have seconds
+                        lda timer+2
+                        adc #$00
+                        sta timer+2
+                        lda tick_temp
+                        and #$ff
+                        clc
+                        adc timer
+                        sta timer                   ; total current seconds since midnight
+                        lda timer+2
+                        adc #$00
+                        sta timer+2
 
-tick_count_cur	ds 4		; .res 2
-tick_count_start ds 4
-tick_temp	ds 6
-time		ds 2		; .res 2
-timer		ds 4
-start_time  adrl 0
+tr_loop
+                        sec
+                        lda timer
+                        sbc start_time
+                        tax
+                        lda timer+2
+                        sbc start_time+2
+                        bpl tr_exit
+                        clc
+                        lda timer
+                        adc #<86400                 ; seconds in a day
+                        sta timer
+                        lda timer+2
+                        adc #>86400
+                        sta timer+2
+                        bra tr_loop
+tr_exit
+                        txa
+                        rts
+
+tick_count_cur          ds  4                       ; .res 2
+tick_count_start        ds  4
+tick_temp               ds  6
+time                    ds  2                       ; .res 2
+timer                   ds  4
+start_time              adrl 0
 
 
 
@@ -1304,10 +1299,10 @@ lastclickpoint          ds  4
 
 
 
-; cfgdata  data
+* config defaults data
 UDDefaultCfg
 cfgvers                 =   1
-; connect data
+                                                    ; connect data
 cfgversion              dw  cfgvers                 ; +0 version
 cfg_ip                  db  192,168,0,123           ; +2 ip
 cfg_netmask             db  255,255,255,223         ; +6 netmask
@@ -1319,16 +1314,16 @@ cfg_vers                dw  ^ll_vers                ; offset 24
                         dw  ll_vers                 ; offset 26
 cfg_mtu                 dw  1460                    ; offset 28
                         ds  64-{*-UDDefaultCfg}     ; pad to 64 to be less brittle on version changes
-
 cfglen                  =   64
 
+* current actual config area
 UDConfiguration         ds  cfglen                  ; 30 total - this is our actual buffer
 
 
 
+STTTTTTTTTTTTUUUUUUUUUUUUUUUUUUBS
 udgetpacket
 udsendpacket
-udconnect
 udreconstatus
 udreconnect
 uddisconnect
@@ -1341,29 +1336,29 @@ udgetvariables
 work_buffer             ds  17
 response_buffer         ds  4
 
-configAlertIPStr        asc '63~Invalid             value entered for IP Address.',0D0D
+configAlertIPStr        asc '63~Invalid value entered for IP Address.',0D0D
                         asc '~^#4',00
-configAlertGwStr        asc '63~Invalid             value entered for Gateway.',0D0D
+configAlertGwStr        asc '63~Invalid value entered for Gateway.',0D0D
                         asc '~^#4',00
-configAlertNmStr        asc '63~Invalid             value entered for Netmask.',0D0D
+configAlertNmStr        asc '63~Invalid value entered for Netmask.',0D0D
                         asc '~^#4',00
-configAlertMtuStr       asc '63~Invalid             value entered for MTU.',0D0D
-                        asc 'Valid                  values are 576 - 1600.'
+configAlertMtuStr       asc '63~Invalid value entered for MTU.',0D0D
+                        asc 'Valid values are 576 - 1600.'
                         asc '~^#4',00
 
 
 * Not used... yet ;)
-testalert               ASC '63~UltimateDrive       Link Layer',0D0D
-                        ASC 'Copyright              (c) 2024 by UltimateDrive Team',0D,
-                        asc '                       Dagen Brock & Phil Timmes',0D
-                        ASC '~^#0'
-                        DFB 0
+testalert               asc '63~UltimateDrive Link Layer',0D0D
+                        asc 'Copyright (c) 2024 by UltimateDrive Team',0D,
+                        asc '  Dagen Brock & Phil Timmes',0D
+                        asc '~^#0'
+                        dfb 0
 
 
 
 UserID                  dw  0                       ; Program's ID from MemoryManager
 
-; my direct space on marinetti's direct page $E0-$FF available
+* my direct space on marinetti's direct page $E0-$FF available
 * tmppkthandle gequ $e0
 * cnt			gequ $e4
 cfghandle               equ $E8
@@ -1372,33 +1367,33 @@ ap                      equ $F0
 * eth_packet	gequ $f2
 ipmask                  equ $F4
 ipgw                    equ $F8
-bufsize dw  #1518	; Size
+bufsize                 dw  #1518                   ; Size
 
-eth_inp_len	ds 2         	; input packet length
-eth_inp		ds 1518	; space for input packet
-	asc	"eth_outp"
-eth_outp_len ds 2		; output packet length
-eth_outp	ds 1518	; space for output packet
+eth_inp_len             ds  2                       ; input packet length
+eth_inp                 ds  1518                    ; space for input packet
+                        asc "eth_outp"
+eth_outp_len            ds  2                       ; output packet length
+eth_outp                ds  1518                    ; space for output packet
 
-; gateway handling
+* gateway handling
 gw_mask                 ds  4                       ; inverted netmask
 gw_test                 ds  4                       ; gateway ip or:d with inverted netmask
 gw_last                 ds  1                       ; netmask length - 1
 
-; timeout
-arptimeout	ds 2		; time when we will have timed out
-packettimeout ds 2		; for sending packets
+* timeout
+arptimeout              ds  2                       ; time when we will have timed out
+packettimeout           ds  2                       ; for sending packets
 
 * set version to v2.0.5d1
 wizversh                equ $0205                   ;mmmm_mmmm_mmmm_bbbb
 wizversl                equ $2001                   ;sss0_0000_rrrr_rrrr ss-20=d,40=a,60=b,80=f,a0=r
 
-; wiz card registers
+* wiz card registers
 mode                    equ $e0c084                 ; Mid byte patched at runtime
 addr                    equ $e0c085                 ; Mid byte patched at runtime
 data                    equ $e0c087                 ; Mid byte patched at runtime
 
-; holding values for packet retrieval
+* holding values for packet retrieval
 tmp_data
 tmp_ip                  ds  4
 * tmp_netmask ds 4
@@ -1413,24 +1408,24 @@ tmp_mtu                 ds  2
 tmp_length              equ *-tmp_data
 
 
-; arp state machine
+* arp state machine
 arp_idle                equ 1                       ; idling
 arp_wait                equ 2                       ; waiting for reply
 arp_state               ds  2                       ; current activity
 
-; arguments for lookup and add
+* arguments for lookup and add
 arp                                                 ; ptr to mac/ip pair
 arp_mac                 ds  6                       ; result is delivered here
 arp_ip                  ds  4                       ; set ip before calling lookup
 
-; arp cache
+* arp cache
 ac_size                 equ 8                       ; lookup cache
 ac_ip                   equ 6                       ; offset for ip
 ac_mac                  equ 0                       ; offset for mac
 arp_cache               ds  6+4*ac_size             ; .res (6+4)*ac_size
 
 MarinettiVariables      ds  lvlen
-;link layer variables as defined by marinetti
+* link layer variables as defined by marinetti
 lvversion               equ $0000
 lvconnected             equ $0002
 lvipaddress             equ $0004
@@ -1442,9 +1437,21 @@ lvlen                   equ $0012
 true                    equ $8000
 false                   equ $0000
 
+* misc equates
+terrok                  equ $0000
+terrlinkerror           equ $0004+$3600
+terrnoreconsupprt       equ $0014+$3600             ;this module doesn't support reconnect
+terruseraborted         equ $0015+$3600
+terrmask                equ $00ff
+
+parmstack               equ 4
+parmstackb              equ 1+parmstack
+
+myllintvers             equ 2
 
                         put marinetti_equates
                         put udnetrz
+                        put udlib
 
                         use Mem.Macs                ;standard merlin32 (and merlin16) macros
                         use Util.Macs               ;standard merlin32 (and merlin16) macros
@@ -1452,9 +1459,13 @@ false                   equ $0000
                         use Qd.Macs                 ;standard merlin32 (and merlin16) macros
                         use Ctl.Macs                ;standard merlin32 (and merlin16) macros
                         use Int.Macs                ;standard merlin32 (and merlin16) macros
-                        use Misc.Macs                ;standard merlin32 (and merlin16) macros
-                        use Event.Macs                ;standard merlin32 (and merlin16) macros
-                        use Macros                ;standard merlin32 (and merlin16) macros
-                        
+                        use Misc.Macs               ;standard merlin32 (and merlin16) macros
+                        use Event.Macs              ;standard merlin32 (and merlin16) macros
+                        use Macros                  ;standard merlin32 (and merlin16) macros
+
 ]tcpiptoolnum           equ $36
                         use TCPIP.MACS.S            ;from Marinetti sources
+
+
+
+
