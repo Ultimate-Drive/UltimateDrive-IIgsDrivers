@@ -42,22 +42,34 @@ routines                dw  UDLinkInterfaceV
                         dw  UDLinkStartup
                         dw  UDLinkShutdown
                         dw  UDLinkModuleInfo
-                        dw  udgetpacket
-                        dw  udsendpacket
+                        dw  UDLinkGetPacket
+                        dw  UDLinkSendPacket
                         dw  UDLinkConnect
-                        dw  udreconstatus
+                        dw  UDLinkReconStatus
                         dw  udreconnect
                         dw  uddisconnect
-                        dw  udgetvariables
+                        dw  UDLinkGetVariables
                         dw  UDLinkConfigure
                         dw  UDLinkConfigFileName
+
+* x = iterations (len)  y= tone (delay)
+BLEEP                   mx %00
+                        sty :bdel+1
+                        sep $20
+:bloop
+:bdel                   ldy #$0000 ; SMC
+:delay                  dey
+                        bne :delay
+                        stal $00c030
+                        dex 
+                        bne :bloop
+                        rep $30
+                        rts
+                        
 
 
 * Returns the maximum link layer module interface which this link layer module supports.
 UDLinkInterfaceV
-                        brl intvok
-intvok                  nop
-                        nop
                         lda #myllintvers
                         sta parmstack,s
 
@@ -65,14 +77,126 @@ intvok                  nop
                         clc
                         rtl
 
+* Returns a flag indicating whether the module is in a state to reconnect.
+UDLinkReconStatus
+                        lda #false
+                        sta parmstack,s
+                        clc
+                        rtl
+
+* Returns a pointer to the link layer module’s variables.
+UDLinkGetVariables
+                        lda   #MarinettiVariables
+                        sta   4,s
+                        lda   #^MarinettiVariables
+                        sta   4+2,s
+                        lda   #terrok
+                        clc
+                        rtl
+
+* Returns a raw data datagram from the network.
+UDLinkGetPacket 
+                        phb			; push data bank register
+                        phk			; push program bank register
+                        plb			; pull databank register
+                        sty	UserID	; save marinetti userid
 
 
+                        jsr UDNetPeek
+
+                        beq none
+
+                        PushLong #0                   ; now we must create a handle to pass back the updated data
+                        PushWord #0                   ; addr pad
+                        PushWord UDPacketLen          
+                        PushWord UserID
+                        pea $18 ; attributes
+                        PushLong #0
+                        _NewHandle
+                        PullLong temphandle
+
+
+                        sep $30
+                        lda :gpc
+                        stal $00c034
+                        eor #$F
+                        sta :gpc
+                        rep $30
+                 
+                        ldx temphandle
+                        ldy temphandle+2
+                        jsr UDNetRecv
+
+
+                        lda	temphandle
+                        sta	parmstackb,s
+                        lda	temphandle+2
+                        sta	parmstackb+2,s
+                        lda	#terrok
+                        plb
+                        clc
+                        rtl
+                                            
+
+none anop
+
+                        lda	#0
+                        sta	parmstackb,s
+                        sta	parmstackb+2,s
+                        plb
+                        clc
+                        rtl
+:gpc db 0
+        
+
+* Sends an IP datagram to the network via the module’s datagram encapsulation.
+UDLinkSendPacket 
+                        phb			; push data bank register
+                        phk			; push program bank register
+                        plb			; pull databank register
+                        sty	UserID	; save marinetti userid
+
+                        sep $30
+                        lda :spc
+                        stal $00c034
+                        eor #$F
+                        sta :spc
+                        rep $30
+                 
+
+
+                        lda	parmstack+2,s
+                        tay
+                        lda	parmstack+4,s
+                        tax
+                        lda	parmstack,s	; length
+                        jsr UDNetSend
+                        
+
+                        bcc	:send_ok
+                        ldy	#terrlinkerror
+                        bra	:cleanup
+:send_ok		
+                        ldy	#terrok
+:cleanup  
+                        plb
+                        pla
+                        sta	5,s
+                        pla
+                        sta	5,s
+                        pla
+                        tya
+                        rtl
+:spc db $1                        
 * Starts the link layer module once it is loaded. The module should
 * perform any initialisation tasks short of actually starting a connection.
 UDLinkStartup
                         jsr UDDetectSlot
 UDLinkShutdown
                         brl :okaaaa
+
+
+
 
 
 * Marinetti 3.0 Programmers’ Guide Page 168
@@ -123,7 +247,7 @@ UDLinkModuleInfoData
                         dw  conUltimateDrive
 ll_name                 str 'UltimateDrive'
                         ds  21-{*-ll_name}          ; pad using subexpression for merlin32
-ll_vers                 adrl #$1
+ll_vers                 dw #udnetversl,#udnetversh
 ll_flags                dw  0
 UDLinkModuleInfoDataL   =   *-UDLinkModuleInfoData
 
@@ -531,7 +655,7 @@ alert_strp2             pea 0
 * Is this call not yet in use?  UDLinkConfigure doesn't seem to need it.
 * I'm marking as done though I believe that "[4]" is buggy.
 * @todo: check marinetti code for relevance
-UDLinkConfigFileName
+UDLinkConfigFileName    brk $12
                         TSC
                         PHD
                         TCD
@@ -561,12 +685,12 @@ UDLinkConfigFileName
 
 
 UDLinkConnect           mx %00
-                        phb                         ;push data bank register
-                        phk                         ;push program bank register
-                        plb                         ;pull databank register
-                        sty UserID                  ;marinetti memory request id
+                        phb                         ; push data bank register
+                        phk                         ; push program bank register
+                        plb                         ; pull databank register
+                        sty UserID                  ; marinetti memory request id
 
-                        lda #terruseraborted
+                        lda #terruseraborted        ; default response
                         sta err_return
 
                         stz MarinettiVariables+lverrors ; start with a clean slate
@@ -656,91 +780,12 @@ docfg
                         _SetRandSeed
 
 
-                        DO 0
-                        lda UDConfiguration+20
-                        asl a
-                        asl a
-                        asl a
-                        asl a
-                        ora #$0080
-                        sta wiz_slot_offset
-
-                        ldx #0
-wiz_1                                            ; Fixup address at location
-                        lda fixup,x
-                        sta ap
-                        lda (ap)
-                        and #$ff0f
-                        ora wiz_slot_offset
-                        sta (ap)
-; Advance to next fixup location
-                        inx
-                        inx
-                        cpx #fixups
-                        bcc wiz_1
-
-                        sep $30
-
-; S/W Reset
-                        lda #$80
-fixup01                 sta >mode
-wiz_3
-fixup02                 lda >mode
-                        bmi wiz_3
-
-; Indirect Bus I/F mode, Address Auto-Increment, Ping Block
-                        lda #$13
-fixup03                 sta >mode
-
-; Source Hardware Address Register: MAC Address
-                        ldx #$00                    ; Hibyte
-                        ldy #$09                    ; Lobyte
-                        jsr set_addr
-wiz_4b                  lda UDConfiguration+14,x
-fixup04                 sta >data
-                        inx
-                        cpx #$06
-                        bcc wiz_4b
-
-; RX Memory Size Register: Assign 8KB to socket 0
-; TX Memory Size Register: Assign 8KB to socket 0
-                        ldx #$00                    ; Hibyte
-                        ldy #$1A                    ; Lobyte
-                        jsr set_addr
-                        lda #$03
-fixup05                 sta >data
-fixup06                 sta >data
-
-; Max Segment Size Registers (MTU-40=MSS) Sockets 0: Assign 1460 as default
-                        ldx #$04                    ; Hibyte
-                        ldy #$12                    ; Lobyte socket 0
-                        jsr set_addr
-                        sec
-                        lda MarinettiVariables+lvmtu ; mtu lo
-                        sbc #40
-                        tax
-                        lda MarinettiVariables+lvmtu+1 ; mtu hi
-                        sbc #0
-fixup30                 sta >data
-                        txa
-fixup31                 sta >data
-
-; Socket 0 Mode Register: MACRAW, MAC Filter
-; Socket 0 Command Register: OPEN
-                        ldy #$00
-                        jsr set_addrsocket0
-                        lda #$44
-fixup07                 sta >data
-                        lda #$01
-fixup08                 sta >data
-
-                        rep $30
-                        FIN
 
 
-                        jsr UDDetectMac             ; THIS starts the w5500 & ethernet link & gets MAC
-                        brk $55                     ; nothing is done beyond here
+                        jsr UDConnect             ; THIS starts the w5500 & ethernet link & gets MAC
+
                         lda UDConfiguration+22      ; do we try dhcp to request an ip address
+                        bra no_dhcp
                         beq no_dhcp
 
 * jsr request_dhcp            ; go and try to get one
@@ -771,19 +816,16 @@ mtu_offered
                         sta MarinettiVariables+lvmtu
 
 no_dhcp
-
-                        lda #wizversl               ; copy our version marker as it may have changed
+                        lda #udnetversl               ; copy our version marker as it may have changed
                         sta UDConfiguration+24
-                        lda #wizversh
+                        lda #udnetversh
                         sta UDConfiguration+26
 
-                        pha                         ; now we must create a handle to pass back the updated data
-                        pha
+                        PushLong #0                   ; now we must create a handle to pass back the updated data
                         PushLong #cfglen
                         PushWord UserID
-                        pea $18
-                        pea 0
-                        pea 0
+                        pea $18 ; attributes
+                        PushLong #0
                         _NewHandle
                         PullLong temphandle
 
@@ -792,7 +834,7 @@ no_dhcp
                         PushLong #cfglen
                         _PtrToHand
 
-                        PushWord #conUthernet2      ; now tell marinetti the new data if we change
+                        PushWord #conUltimateDrive  ; now tell marinetti the new data if we change
                         PushLong temphandle
                         _TCPIPSetConnectData
 
@@ -812,68 +854,7 @@ no_dhcp
                         sta ipgw+2
 
                         lda #setmacstr              ; display our connect data
-                        *   jsr                     showpstring
-
-; initialize arp
-
-                        sep $30
-
-                        lda #0
-                        ldx #6+4*ac_size-1          ; clear cache
-clr                     sta arp_cache,x
-                        dex
-                        bpl clr
-
-                        lda #$ff                    ; counter for netmask length - 1
-                        sta gw_last
-
-                        ldx #3
-gw
-                        lda ipmask,x
-                        eor #$ff
-                        cmp #$ff
-                        beq next                    ; was bne
-                        inc gw_last
-next                    sta gw_mask,x
-                        ora ipgw,x
-                        sta gw_test,x
-                        dex
-                        bpl gw
-
-; Gateway Address Register: Gateway Address
-                        ldx #$00                    ; Hibyte
-                        ldy #$01                    ; Lobyte
-                        jsr set_addr
-wiz_4                   lda UDConfiguration+10,x
-fixup09                 sta >data
-                        inx
-                        cpx #$04
-                        bcc wiz_4
-
-; Subnet Address Register: Subnet Address
-                        ldx #$00                    ; Hibyte
-                        ldy #$05                    ; Lobyte
-                        jsr set_addr
-wiz_4a                  lda UDConfiguration+6,x
-fixup10                 sta >data
-                        inx
-                        cpx #$04
-                        bcc wiz_4a
-
-; Source IP Address Register: IP Address
-                        ldx #$00                    ; Hibyte
-                        ldy #$0F                    ; Lobyte
-                        jsr set_addr
-wiz_4c                  lda UDConfiguration+2,x
-fixup11                 sta >data
-                        inx
-                        cpx #$04
-                        bcc wiz_4c
-
-                        rep $30
-
-                        lda #arp_idle               ; start out idle
-                        sta arp_state
+                        jsr                     showpstring
 
                         lda #true
                         sta MarinettiVariables+lvconnected
@@ -922,235 +903,6 @@ wiz_slot_offset         dw  $0040
 
 
 
-*-------------------------------------------------
-* common sub routines
-*-------------------------------------------------
-
-; retrieve a packet
-eth_rx                  sep $30
-; Check for completion of previous command
-                        jsr set_addrcmdreg0         ; set command reg = 0 ?
-fixup12                 lda >data
-                        beq wiz_6
-
-; No data available
-wiz_5                   rep $30
-                        sec
-                        rts
-
-                        mx  %11
-; Socket 0 RX Received Size Register: != 0 ?
-wiz_6                   ldy #$26                    ; Socket RX Received Size Register
-                        jsr set_addrsocket0
-fixup13                 lda >data                   ; Hibyte
-fixup14                 ora >data                   ; Lobyte
-                        beq wiz_5
-
-; Process the incoming data
-; -------------------------
-
-; Set parameters for receiving data
-                        lda #>$6000                 ; Socket 0 RX Base Address
-                        jsr set_parameters
-
-; commented out in w1500s.txt
-;	ldy #$28		; Socket RX Read Pointer Register
-;	jsr set_addrsocket0
-
-; Calculate and set physical address
-                        jsr set_addrphysical
-
-; Move physical address shadow to $E000-$FFFF
-                        ora #>$8000
-                        tax
-
-; Read MAC raw 2byte packet size header
-                        jsr get_datacheckaddr       ; Hibyte
-                        sta adv+1
-                        jsr get_datacheckaddr       ; Lobyte
-                        sta adv
-
-                        rep $30
-; Subtract 2byte header and set length
-                        sec
-                        lda adv
-                        sbc #$0002
-                        sta len
-
-; Is bufsize < length ?
-                        cmp bufsize
-                        bcc wiz_7
-
-; Set data length = 0 and skip read
-                        stz len
-                        bra wiz_8                   ; Always
-
-; Read data
-wiz_7
-                        rep $10                     ;shortm
-                        ldx #0
-wiz_13
-fixup17                 lda >data
-                        sta eth_inp,x
-                        inx
-                        cpx len
-                        bcc wiz_13
-
-; Set parameters for common code
-wiz_8
-                        sep $30
-                        lda #$40                    ; RECV
-                        ldy #$28                    ; Socket 0 RX Read Pointer Register
-                        jsr common
-                        mx  %00
-
-                        clc
-                        rts
-
-*-------------------------------------------------
-; send a packet
-
-eth_tx
-                        jsr timer_read              ; read current timer value
-                        clc
-                        adc #0300                   ; set timeout to now+5000 ms
-                        sta packettimeout
-
-                        lda eth_outp_len
-                        sta adv
-
-                        sep $30
-
-; Set parameters for transmitting data
-                        lda #>$4000                 ; Socket 0 TX Base Address
-                        jsr set_parameters
-
-; Wait for completion of previous command
-; Socket 0 Command Register: = 0 ?
-wiz_9                   anop
-                        sep $30
-                        jsr set_addrcmdreg0
-fixup18                 lda >data
-                        beq wiz_10
-                        rep $30
-                        jsr timer_read              ; read current timer value
-                        cmp packettimeout
-                        bcc wiz_9
-                        sec
-                        rts
-
-                        mx  %11
-
-; Socket 0 TX Free Size Register: < length ?
-wiz_10
-                        ldy #$20                    ; Socket TX Free Size Register
-                        jsr set_addrsocket0
-fixup19                 lda >data                   ; Hibyte
-                        pha
-fixup20                 lda >data                   ; Lobyte
-                        tax
-                        pla
-                        cpx eth_outp_len
-                        sbc eth_outp_len+1
-                        bcc wiz_10
-
-; Send the data
-; -------------
-
-                        ldy #$24                    ; Socket TX Write Pointer Register
-                        jsr set_addrsocket0
-
-; Calculate and set physical address
-                        jsr set_addrphysical
-
-; Write data
-                        rep $10                     ; longx
-                        ldx #0
-wiz_14
-                        lda eth_outp,x
-fixup23                 sta >data
-                        inx
-                        cpx eth_outp_len
-                        bcc wiz_14
-                        sep $10
-
-; Set parameters for common code
-                        lda #$20                    ; SEND
-                        ldy #$24                    ; Socket TX Write Pointer Register
-; Advance pointer register
-common                  jsr set_addrsocket0
-                        tay                         ; Save command
-                        clc
-                        lda reg
-                        adc adv
-                        tax
-                        lda reg+1
-                        adc adv+1
-fixup24                 sta >data                   ; Hibyte
-                        txa
-fixup25                 sta >data                   ; Lobyte
-
-; Set command register
-                        tya                         ; Restore command
-                        jsr set_addrcmdreg0
-fixup26                 sta >data
-                        rep $30
-                        clc
-                        rts
-
-
-;---------------------------------------------------------------------
-                        mx  %11
-set_addrphysical
-fixup27                 lda >data                   ; Hibyte
-                        pha
-fixup28                 lda >data                   ; Lobyte
-                        tay
-                        pla
-                        sty reg
-                        sta reg+1
-                        and #>$1FFF                 ; Socket Mask Address (hibyte)
-                        ora bas+1                   ; Socket Base Address (hibyte)
-                        tax
-set_addr
-                        pha
-                        txa
-fixup29                 sta >addr                   ; Hibyte
-                        tya
-fixup22                 sta >addr+1                 ; Lobyte
-                        pla
-                        rts
-
-set_addrcmdreg0
-                        ldy #$01                    ; Socket Command Register
-set_addrsocket0
-                        ldx #>$0400                 ; Socket 0 register base address
-                        bra set_addr                ; Always
-
-set_addrbase
-                        ldx bas+1                   ; Socket Base Address (hibyte)
-                        ldy #<$0000                 ; Socket Base Address (lobyte)
-                        bra set_addr                ; Always
-
-get_datacheckaddr
-fixup16                 lda >data
-                        iny                         ; Physical address shadow (lobyte)
-                        bne wiz_11
-                        inx                         ; Physical address shadow (hibyte)
-                        beq set_addrbase
-wiz_11                  rts
-
-
-
-; Setup variables in zero page
-set_parameters
-                        stz bas
-                        sta bas+1                   ; Socket Base Address
-                        clc
-                        adc #>$2000                 ; Socket memory size
-                        rts
-
-
 
 showpstring
                         phy
@@ -1165,116 +917,6 @@ displayptr
 :nullstring             ply
                         rts
 
-
-
-
-; timer routines (original comments)
-;
-; the  should be a 16-bit counter that's incremented by about
-; 1000 units per second. it doesn't have to be particularly accurate,
-; if you're working with e.g. a 60 hz vblank irq, adding 17 to the
-; counter every frame would be just fine.
-; code mofied to work with 1/60 of a second
-
-
-; return the current value
-timer_read
-                        pha
-                        pha
-                        _TickCount
-                        PullLong tick_count_cur
-; how many ticks have tocked since the last tick did tock
-                        SUB4 tick_count_cur;tick_count_start;tick_temp
-                        lda tick_temp
-; more than 60 (1 second)
-                        cmp #60
-                        bcc ret
-                        ADD4 tick_count_start;60
-                        SUB4 tick_temp;60
-                        lda tick_temp
-ret
-                        rts
-
-; we can't use tickcount during dhcp negotiation, as the event manager has not yet been started
-; but we can use the clock, with some more elaborate code...
-; return current elapsed time in seconds, accounting for midnight rollover
-; we are not going to be more than 60 seconds in here, so we will not span two days!
-timer_read2
-
-                        pha
-                        pha
-                        pha
-                        pha
-                        _ReadTimeHex
-                        pla                         ; read mins and secs
-                        sta tick_temp
-                        pla                         ; read hour and year
-                        sta tick_temp+2
-                        plx                         ; throw dates
-                        plx                         ; throw dates
-                        and #$ff                    ; hours
-                        asl a
-                        asl a
-                        sta tick_temp+4
-                        asl a
-                        asl a
-                        asl a
-                        asl a
-                        sec
-                        sbc tick_temp+4
-                        sta timer                   ; we have minutes
-                        lda tick_temp+1             ; mins
-                        and #$ff
-                        asl a
-                        asl a
-                        sta tick_temp+4
-                        asl a
-                        asl a
-                        asl a
-                        asl a
-                        sec
-                        sbc tick_temp+4
-                        clc
-                        adc timer
-                        sta timer                   ; we have seconds
-                        lda timer+2
-                        adc #$00
-                        sta timer+2
-                        lda tick_temp
-                        and #$ff
-                        clc
-                        adc timer
-                        sta timer                   ; total current seconds since midnight
-                        lda timer+2
-                        adc #$00
-                        sta timer+2
-
-tr_loop
-                        sec
-                        lda timer
-                        sbc start_time
-                        tax
-                        lda timer+2
-                        sbc start_time+2
-                        bpl tr_exit
-                        clc
-                        lda timer
-                        adc #<86400                 ; seconds in a day
-                        sta timer
-                        lda timer+2
-                        adc #>86400
-                        sta timer+2
-                        bra tr_loop
-tr_exit
-                        txa
-                        rts
-
-tick_count_cur          ds  4                       ; .res 2
-tick_count_start        ds  4
-tick_temp               ds  6
-time                    ds  2                       ; .res 2
-timer                   ds  4
-start_time              adrl 0
 
 
 
@@ -1304,9 +946,9 @@ UDDefaultCfg
 cfgvers                 =   1
                                                     ; connect data
 cfgversion              dw  cfgvers                 ; +0 version
-cfg_ip                  db  192,168,0,123           ; +2 ip
-cfg_netmask             db  255,255,255,223         ; +6 netmask
-cfg_gateway             db  192,168,0,103           ; +10 gateway
+cfg_ip                  db  192,168,1,123           ; +2 ip
+cfg_netmask             db  255,255,255,0           ; +6 netmask
+cfg_gateway             db  192,168,1,254           ; +10 gateway
 cfg_mac                 hex 00,08,dc,11,11,11       ; +14 OUI of WIZnet
 cfg_slot                dw  4                       ; +20 slot
 use_dhcp                dw  0                       ; offset 22
@@ -1322,12 +964,9 @@ UDConfiguration         ds  cfglen                  ; 30 total - this is our act
 
 
 STTTTTTTTTTTTUUUUUUUUUUUUUUUUUUBS
-udgetpacket
-udsendpacket
 udreconstatus
 udreconnect
 uddisconnect
-udgetvariables
 
 :okaaaa                 lda #terrok
                         clc
@@ -1385,8 +1024,9 @@ arptimeout              ds  2                       ; time when we will have tim
 packettimeout           ds  2                       ; for sending packets
 
 * set version to v2.0.5d1
-wizversh                equ $0205                   ;mmmm_mmmm_mmmm_bbbb
-wizversl                equ $2001                   ;sss0_0000_rrrr_rrrr ss-20=d,40=a,60=b,80=f,a0=r
+* set version to v0.1.0a1
+udnetversh              equ $0010                   ;mmmm_mmmm_mmmm_bbbb
+udnetversl              equ $4001                   ;sss0_0000_rrrr_rrrr ss-20=d,40=a,60=b,80=f,a0=r
 
 * wiz card registers
 mode                    equ $e0c084                 ; Mid byte patched at runtime
@@ -1396,14 +1036,14 @@ data                    equ $e0c087                 ; Mid byte patched at runtim
 * holding values for packet retrieval
 tmp_data
 tmp_ip                  ds  4
-* tmp_netmask ds 4
-* tmp_gateway ds 4
-* tmp_server ds 4
-* tmp_lease ds 4
+tmp_netmask ds 4
+tmp_gateway ds 4
+tmp_server ds 4
+tmp_lease ds 4
 tmp_dns                 ds  4
-* tmp_dns2 ds 4
-* tmp_src_mac ds 6
-* tmp_src_ip ds 4
+tmp_dns2 ds 4
+tmp_src_mac ds 6
+tmp_src_ip ds 4
 tmp_mtu                 ds  2
 tmp_length              equ *-tmp_data
 
