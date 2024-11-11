@@ -1,6 +1,7 @@
 _FileInformation.txt	
 .DS_Store
 *.po
+*.2mg
 build_temp/
 config.kegs
 *_Output.txt
