@@ -164,6 +164,13 @@ UDLinkSendPacket
                         rep $30
                  
 
+                        lda	parmstack+2,s
+                        tay
+                        lda	parmstack+4,s
+                        tax
+                        lda	parmstack,s	; length
+                        jsr HexDumpBuffer
+
 
                         lda	parmstack+2,s
                         tay
@@ -172,7 +179,6 @@ UDLinkSendPacket
                         lda	parmstack,s	; length
                         jsr UDNetSend
                         
-
                         bcc	:send_ok
                         ldy	#terrlinkerror
                         bra	:cleanup
@@ -885,10 +891,6 @@ err                     rep $30
 setmacstr               str 'MAC address initialized '
 linkstrs                str 'Starting UltimateDrive Network Driver'
 
-reg                     dw  0                       ; register
-len                     dw  0                       ; Packet length counter
-adv                     dw  0                       ; Data pointer advancement
-bas                     dw  0                       ; register base memory
 
 err_return              ds  2
 temphandle              ds  4
@@ -917,6 +919,150 @@ displayptr
 :nullstring             ply
                         rts
 
+
+
+; timer routines (original comments)
+;
+; the  should be a 16-bit counter that's incremented by about
+; 1000 units per second. it doesn't have to be particularly accurate,
+; if you're working with e.g. a 60 hz vblank irq, adding 17 to the
+; counter every frame would be just fine.
+; code mofied to work with 1/60 of a second
+
+
+; return the current value
+timer_read	anop
+
+                        pha
+                        pha
+                        _TickCount
+                        PullLong tick_count_cur
+; how many ticks have tocked since the last tick did tock
+                        sub4d tick_count_cur;tick_count_start;tick_temp
+                        lda tick_temp
+; more than 60 (1 second)
+                        cmp #60
+                        bcc ret
+                        add4 tick_count_start;60
+                        sub4 tick_temp;60
+                        lda tick_temp
+ret                     anop
+                        rts
+
+
+* 16 bit - src/dest,add value
+add4                    mac
+                        clc
+                        lda ]1
+                        adc ]2
+                        sta ]1
+                        lda ]1+2
+                        adc ]2+2
+                        sta ]1+2
+                        eom
+
+* 16 bit - src/dest,sub value
+sub4                    mac
+                        sec
+                        lda ]1
+                        sbc ]2
+                        sta ]1
+                        lda ]1+2
+                        sbc ]2+2
+                        sta ]1+2
+                        eom
+
+* 16 bit - srca,srcb,dest
+sub4d                   mac
+                        sec
+                        lda ]1
+                        sbc ]2
+                        sta ]3
+                        lda ]1+2
+                        sbc ]2+2
+                        sta ]3+2
+                        eom
+
+; we can't use tickcount during dhcp negotiation, as the event manager has not yet been started
+; but we can use the clock, with some more elaborate code...
+; return current elapsed time in seconds, accounting for midnight rollover
+; we are not going to be more than 60 seconds in here, so we will not span two days!
+timer_read2             anop
+
+                        pha
+                        pha
+                        pha
+                        pha
+                        _ReadTimeHex
+                        pla                         ; read mins and secs
+                        sta tick_temp
+                        pla                         ; read hour and year
+                        sta tick_temp+2
+                        plx                         ; throw dates
+                        plx                         ; throw dates
+                        and #$ff                    ; hours
+                        asl a
+                        asl a
+                        sta tick_temp+4
+                        asl a
+                        asl a
+                        asl a
+                        asl a
+                        sec
+                        sbc tick_temp+4
+                        sta timer                   ; we have minutes
+                        lda tick_temp+1             ; mins
+                        and #$ff
+                        asl a
+                        asl a
+                        sta tick_temp+4
+                        asl a
+                        asl a
+                        asl a
+                        asl a
+                        sec
+                        sbc tick_temp+4
+                        clc
+                        adc timer
+                        sta timer                   ; we have seconds
+                        lda timer+2
+                        adc #$00
+                        sta timer+2
+                        lda tick_temp
+                        and #$ff
+                        clc
+                        adc timer
+                        sta timer                   ; total current seconds since midnight
+                        lda timer+2
+                        adc #$00
+                        sta timer+2
+
+tr_loop                 anop
+                        sec
+                        lda timer
+                        sbc start_time
+                        tax
+                        lda timer+2
+                        sbc start_time+2
+                        bpl tr_exit
+                        clc
+                        lda timer
+                        adc #<86400                 ; seconds in a day
+                        sta timer
+                        lda timer+2
+                        adc #>86400
+                        sta timer+2
+                        bra tr_loop
+tr_exit                 anop
+                        txa
+                        rts
+
+tick_count_cur          ds  4                       ; .res 2
+tick_count_start        ds  4
+tick_temp               ds  6
+time                    ds  2                       ; .res 2
+timer                   ds  4
+start_time              ds  4
 
 
 
