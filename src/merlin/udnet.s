@@ -148,13 +148,275 @@ none anop
                         rtl
 :gpc db 0
         
-
+DBBACK dw 0
 * Sends an IP datagram to the network via the module’s datagram encapsulation.
-UDLinkSendPacket 
+UDLinkSendPacket        
                         phb			; push data bank register
+                        phb
+                        pla                         
+                        sta DBBACK
+
                         phk			; push program bank register
                         plb			; pull databank register
-                        sty	UserID	; save marinetti userid
+                        ; sty	UserID	; save marinetti userid    ; -------------- maybe not needed
+                        
+
+                        lda tick_count_start        ; only do it once
+                        ora tick_count_start+2
+                        bne nocount
+
+                        pha                         ; initialise timer count
+                        pha
+                        _TickCount
+                        pla
+                        sta tick_count_start
+                        plx
+                        stx tick_count_start+2
+
+nocount                 lda parmstack+2,s             ; weird shift because i moved the bank code before this so stack is off by 1
+                        sta loopin+1
+                        lda parmstack+3,s
+                        sta loopin+2
+                        lda parmstack,s             ; length
+                        sta pklen+1
+                        clc
+                        adc #eth_data
+                        sta eth_outp_len
+
+                        lda #ip_outp
+                        sta loopout+1
+                        lda #>ip_outp
+                        sta loopout+2
+                        ldx #0
+loopin                  ldal $0000,x                ; address set above
+loopout                 stal $0000,x                ; address set above
+                        inx
+                        inx
+pklen                   cpx #0                      ; address set above
+                        bcc loopin
+
+
+                        lda ip_outp+ip_dest         ; get mac addr from ip
+                        sta arp_ip
+                        ldx ip_outp+ip_dest+2
+                        stx arp_ip+2
+
+                        cmp #$ffff                  ; check for broadcast addresses
+                        bne chk_bc2
+                        cpx #$ffff
+                        beq bcast
+chk_bc2                 cmp gw_test
+                        bne chk_mc
+                        cpx gw_test+2
+                        bne chk_mc
+
+bcast                   lda #$ffff                  ; set destination MAC for broadcast
+                        sta arp_mac
+                        sta arp_mac+2
+                        sta arp_mac+4
+                        brl arp_ok
+
+chk_mc                  and #$F0                    ; check for multicast addresses
+                        cmp #$E0
+                        bne use_arp
+
+                        lda #$0001                  ; set destination MAC for multicast
+                        sta arp_mac
+                        lda ip_outp+ip_dest
+                        and #$7F00
+                        ora #$005E
+                        sta arp_mac+2
+                        stx arp_mac+4
+                        brl arp_ok
+
+use_arp                 sep $30
+    	
+* arp_lookup routine
+
+                        ldx gw_last                 ; check if address is on our subnet
+nextadr                 lda arp_ip,x
+                        ora gw_mask,x
+                        cmp gw_test,x
+                        bne notlocal
+                        dex
+                        bpl nextadr
+                        bmi local
+
+notlocal                anop
+                        ldx #3                      ; copy gateway's ip address
+nextgw                  lda ipgw,x
+                        sta arp_ip,x
+                        dex
+                        bpl nextgw
+
+local                   anop                        ; findip routine
+
+                        lda #<arp_cache
+                        ldx #>arp_cache
+                        sta ap
+                        stx ap+1
+
+                        ldx #ac_size
+compare                 anop                        ; compare cache entry
+                        ldy #ac_ip
+                        lda (ap),y
+                        beq cachemiss
+cmpnext                 anop
+                        lda (ap),y
+                        cmp arp,y
+                        bne nextent
+                        iny
+                        cpy #ac_ip+4
+                        bne cmpnext
+                        bra copy_mac
+
+nextent                 anop                        ; next entry
+                        lda ap
+                        clc
+                        adc #10
+                        sta ap
+                        bcc noinc
+                        inc ap+1
+noinc                   dex
+                        bne compare
+                        bra cachemiss
+
+copy_mac                anop
+
+                        ldy #ac_ip-1                ; copy mac
+nextmac                 anop
+                        lda (ap),y
+                        sta arp,y
+                        dey
+                        bpl nextmac
+                        rep $30
+                        brl arp_ok
+
+cachemiss               anop
+
+                        rep $30
+
+                        lda arp_state               ; are we already waiting for a reply?
+                        cmp #arp_idle
+                        beq sendrequest             ; yes, send request
+
+                        lda arptimeout              ; check if we've timed out
+                        pha
+                        jsr timer_read              ; read current timer value
+                        sta time
+                        pla
+                        sec                         ; subtract current value
+                        sbc time
+                        bcs notimeout               ; no, don't send
+
+sendrequest             anop                        ; send out arp request
+
+                        jsr maketheheader
+
+                        ldx #4
+setmac1                 lda UDConfiguration+14,x
+                        sta eth_outp+6,x
+                        dex
+                        dex
+                        bpl setmac1
+
+                        jsr makearppacket           ; add arp, eth, ip, hwlen, protolen
+
+                        lda #$0100                  ; set opcode (request = 0001)
+                        sta eth_outp+ap_op
+
+                        ldx #4
+setmac2                 lda UDConfiguration+14,x      ; set source mac addr
+                        sta eth_outp+ap_shw,x
+                        lda #0                      ; set target mac addr
+                        sta eth_outp+ap_thw,x
+                        dex
+                        dex
+                        bpl setmac2
+
+                        ldx #2
+setip                   lda UDConfiguration+2,x       ; set source ip addr
+                        sta eth_outp+ap_sp,x
+                        lda arp_ip,x                ; set target ip addr
+                        sta eth_outp+ap_tp,x
+                        dex
+                        dex
+                        bpl setip
+
+                        lda #ap_packlen             ; set packet length
+                        sta eth_outp_len
+
+
+                        lda eth_outp_len
+                        ldx #eth_outp               ; a is already set to len
+                        ldy #^eth_outp
+                        jsr HexDumpBuffer
+
+                        lda eth_outp_len
+                        ldx #eth_outp               ; a is already set to len
+                        ldy #^eth_outp
+                        jsr UDNetSend
+                        ; jsr eth_tx                  ; send packet
+
+                        lda #arp_wait               ; waiting for reply
+                        sta arp_state
+
+                        jsr timer_read              ; read current timer value
+                        clc
+                        adc #0060                   ; set timeout to now+1000 ms
+                        sta arptimeout
+
+notimeout               anop
+                        lda #terrlinkerror
+                        and terrmask
+                        tay
+                        sec
+                        bra cleanup                 ; packet buffer nuked, fail
+
+arp_ok                  anop
+                                                    ; ACTUALLY SEND!
+	                    ldx	#4
+setmac_s lda arp_mac,x	; copy destination mac address
+                        sta eth_outp+eth_dest,x
+                        lda UDConfiguration+14,x      ; copy my mac address
+                        sta eth_outp+eth_src,x
+                        dex
+                        dex
+                        bpl setmac_s
+
+                        lda #$0008                  ; set type to ip
+                        sta eth_outp+eth_type
+
+
+                        lda eth_outp_len
+                        ldx #eth_outp
+                        ldy #^eth_outp
+                        jsr HexDumpBuffer
+
+                        lda eth_outp_len
+                        ldx #eth_outp
+                        ldy #^eth_outp
+                        jsr UDNetSend
+                        ;jsr eth_tx                  ; send packet and return status
+                        bcc send_ok
+                        ldy #terrlinkerror
+                        bra cleanup
+send_ok                 anop
+                        ldy #terrok
+cleanup                 anop
+                        lda DBBACK
+                        pha
+                        plb
+                        plb ; more munging of that bank reg
+                        pla
+                        sta 5,s
+                        pla
+                        sta 5,s
+                        pla
+                        tya
+                        rtl
+
+
 
                         sep $30
                         lda :spc
@@ -860,7 +1122,12 @@ no_dhcp
                         sta ipgw+2
 
                         lda #setmacstr              ; display our connect data
-                        jsr                     showpstring
+                        jsr showpstring
+
+
+
+                        lda	#arp_idle	            ; start out idle
+                        sta	arp_state
 
                         lda #true
                         sta MarinettiVariables+lvconnected
@@ -904,7 +1171,35 @@ wiz_slot_offset         dw  $0040
 * fixups                  equ *-fixup
 
 
+-------------------------------------------------------------------
+; adds first six bytes of ethernet header
+maketheheader           anop
 
+                        ldx #4
+                        lda #$ffff
+setbrd                  sta eth_outp,x
+                        dex
+                        dex
+                        bpl setbrd
+
+                        rts
+
+; adds proto = arp, hw = eth, and proto = ip to outgoing packet
+makearppacket           anop
+
+                        lda #$0608                  ; eth_proto_arp = hi 08 - lo
+                        sta eth_outp+eth_type
+
+                        lda #$0100                  ; set hw type (eth = 0001)
+                        sta eth_outp+ap_hw
+
+                        lda #$0008                  ; set protcol (ip = 0800)
+                        sta eth_outp+ap_proto
+
+                        lda #$0406                  ;  set proto addr len (eth = 04) = hi set hw addr len (eth = 06) = lo
+                        sta eth_outp+ap_hwlen
+
+                        rts
 
 showpstring
                         phy
@@ -1144,21 +1439,50 @@ testalert               asc '63~UltimateDrive Link Layer',0D0D
 UserID                  dw  0                       ; Program's ID from MemoryManager
 
 * my direct space on marinetti's direct page $E0-$FF available
-* tmppkthandle gequ $e0
-* cnt			gequ $e4
+* tmppkthandle equ $e0
+* cnt			equ $e4
 cfghandle               equ $E8
 cfgptr                  equ $EC
 ap                      equ $F0
-* eth_packet	gequ $f2
+* eth_packet	equ $f2
 ipmask                  equ $F4
 ipgw                    equ $F8
 bufsize                 dw  #1518                   ; Size
 
+* input and output buffers
 eth_inp_len             ds  2                       ; input packet length
 eth_inp                 ds  1518                    ; space for input packet
-                        asc "eth_outp"
+
 eth_outp_len            ds  2                       ; output packet length
 eth_outp                ds  1518                    ; space for output packet
+
+* ethernet packet offsets
+eth_dest                equ 0                       ; destination address
+eth_src                 equ 6                       ; source address
+eth_type                equ 12                      ; packet type
+eth_data                equ 14                      ; packet data
+
+* protocols
+eth_proto_ip            equ 0
+eth_proto_arp           equ 6
+
+
+* ip packets start at ethernet packet+14
+ip_inp                  equ eth_inp+eth_data
+ip_outp                 equ eth_outp+eth_data
+
+* ip packet offsets
+ip_ver_ihl              equ 0
+ip_tos                  equ 1
+ip_len                  equ 2
+ip_id                   equ 4
+ip_frag                 equ 6
+ip_ttl                  equ 8
+ip_proto                equ 9
+ip_header_cksum         equ 10
+ip_src                  equ 12
+ip_dest                 equ 16
+ip_data                 equ 20
 
 * gateway handling
 gw_mask                 ds  4                       ; inverted netmask
@@ -1210,6 +1534,28 @@ ac_ip                   equ 6                       ; offset for ip
 ac_mac                  equ 0                       ; offset for mac
 arp_cache               ds  6+4*ac_size             ; .res (6+4)*ac_size
 
+* offsets for arp packet generation
+ap_hw	equ 14	; hw type (eth = 0001)
+ap_proto equ 16	; protocol (ip = 0800)
+ap_hwlen equ 18	; hw addr len (eth = 06)
+ap_protolen	equ 19	; proto addr len (ip = 04)
+ap_op	equ 20	; request = 0001, reply = 0002
+ap_shw	equ 22	; sender hw addr
+ap_sp	equ 28	; sender proto addr
+ap_thw	equ 32	; target hw addr
+ap_tp	equ 38	; target protoaddr
+ap_packlen	equ 42	; total length of packet
+
+* offsets for udp packet generation
+udp_source equ 0 ; source port
+udp_dest equ 2 ; destination port
+udp_len equ 4 ; length
+udp_cksum equ 6 ; checksum
+udp_data equ 8 ; total length udp header
+
+
+
+
 MarinettiVariables      ds  lvlen
 * link layer variables as defined by marinetti
 lvversion               equ $0000
@@ -1238,6 +1584,9 @@ myllintvers             equ 2
                         put marinetti_equates
                         put udnetrz
                         put udlib
+                        put dagbug
+                        use Text.Macs                ;standard merlin32 (and merlin16) macros
+
 
                         use Mem.Macs                ;standard merlin32 (and merlin16) macros
                         use Util.Macs               ;standard merlin32 (and merlin16) macros
