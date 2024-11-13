@@ -77,6 +77,46 @@ UDLinkInterfaceV
                         clc
                         rtl
 
+* Attempts to disconnect Marinetti from the network.
+UDLinkDisconnect        phb
+                        phk
+                        plb
+
+                        lda parmstackb+16,s
+                        bne showok
+                        stz displayptr+1
+                        stz displayptr+2
+                        bra join
+showok                  lda parmstackb+4,s
+                        sta displayptr+1
+                        lda parmstackb+5,s
+                        sta displayptr+2
+join                    anop
+                        lda #linkstre
+                        jsr showpstring
+                        jsr UDDisconnect
+                        lda #false
+                        sta MarinettiVariables+lvconnected
+                        lda #terrok
+                        tax
+                        pla
+                        sta 17,s
+                        pla
+                        sta 17,s
+                        pla
+                        pla
+                        pla
+                        pla
+                        pla
+                        pla
+                        pla
+                        txa
+                        plb
+                        cmp #1
+                        rtl
+
+linkstre                str 'Stopping UltimateDrive Ethernet Adapter'
+
 * Returns a flag indicating whether the module is in a state to reconnect.
 UDLinkReconStatus
                         lda #false
@@ -366,19 +406,19 @@ setip                   lda UDConfiguration+2,x       ; set source ip addr
                         adc #0060                   ; set timeout to now+1000 ms
                         sta arptimeout
 
-notimeout               anop
+notimeout
                         lda #terrlinkerror
                         and terrmask
                         tay
                         sec
                         bra cleanup                 ; packet buffer nuked, fail
 
-arp_ok                  anop
+arp_ok
                                                     ; ACTUALLY SEND!
-	                    ldx	#4
-setmac_s lda arp_mac,x	; copy destination mac address
+                        ldx #4
+setmac_s                lda arp_mac,x               ; copy destination mac address
                         sta eth_outp+eth_dest,x
-                        lda UDConfiguration+14,x      ; copy my mac address
+                        lda UDConfiguration+14,x    ; copy my mac address
                         sta eth_outp+eth_src,x
                         dex
                         dex
@@ -387,7 +427,7 @@ setmac_s lda arp_mac,x	; copy destination mac address
                         lda #$0008                  ; set type to ip
                         sta eth_outp+eth_type
 
-
+                        ~WriteCString SendArpText
                         lda eth_outp_len
                         ldx #eth_outp
                         ldy #^eth_outp
@@ -401,9 +441,9 @@ setmac_s lda arp_mac,x	; copy destination mac address
                         bcc send_ok
                         ldy #terrlinkerror
                         bra cleanup
-send_ok                 anop
+send_ok                 
                         ldy #terrok
-cleanup                 anop
+cleanup                 
                         lda DBBACK
                         pha
                         plb
@@ -425,6 +465,7 @@ cleanup                 anop
                         sta :spc
                         rep $30
                  
+                        ~WriteCString SendText
 
                         lda	parmstack+2,s
                         tay
@@ -1051,6 +1092,13 @@ docfg
 
 
                         jsr UDConnect             ; THIS starts the w5500 & ethernet link & gets MAC
+                        ldx #0
+:copy_mac               lda UDMacAddr,x
+                        sta UDConfiguration+14,x
+                        inx
+                        inx
+                        cpx #6
+                        bne :copy_mac
 
                         lda UDConfiguration+22      ; do we try dhcp to request an ip address
                         bra no_dhcp
@@ -1390,7 +1438,7 @@ cfgversion              dw  cfgvers                 ; +0 version
 cfg_ip                  db  192,168,1,123           ; +2 ip
 cfg_netmask             db  255,255,255,0           ; +6 netmask
 cfg_gateway             db  192,168,1,254           ; +10 gateway
-cfg_mac                 hex 00,08,dc,11,11,11       ; +14 OUI of WIZnet
+cfg_mac                 hex BA,DB,AD,BA,DB,AD       ; +14 mac goes here
 cfg_slot                dw  4                       ; +20 slot
 use_dhcp                dw  0                       ; offset 22
 cfg_vers                dw  ^ll_vers                ; offset 24
