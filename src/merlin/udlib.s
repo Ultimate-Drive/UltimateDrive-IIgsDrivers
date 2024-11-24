@@ -56,6 +56,7 @@ UDDetectSlot            mx  %00
 
                         sec                         ; not found
                         rep $30
+                        plb
                         rts
 
 UDIoExec                mx  %11
@@ -85,8 +86,9 @@ UDConnect               mx %00
                         sep $30
                         lda #UDCmd_NetOpen
                         jsr UDIoExec
-                        bcs :exit                   ; error
-                        rep $30
+                        bcc :ok                   ; error
+                        brk $C0 ; C0nnect error
+:ok                        rep $30
 
                         ldy #UDMacAddr
                         lda #6
@@ -105,11 +107,26 @@ UDDisconnect            mx %00
 :exit                   rep $30
                         rts
 
+* return net status bytes (config&version)
+UDNetStatus             mx  %00
+                        stz UDNetStatusBytes
+                        sep $30
+                        ldx UDSlotNum
+                        lda #UDCmd_NetStatus
+                        jsr UDIoExec
+                        ldal UD_IO_RData,x
+                        sta UDNetStatusBytes
+                        ldal UD_IO_RData,x
+                        sta UDNetStatusBytes+1
+                        rep $30
+                        lda UDNetStatusBytes
+                        rts
+
+UDNetStatusBytes        dw #$0000   ;WIZCHIP_READ(PHYCFGR), WIZCHIP_READ(VERSIONR)
+
 * return pending packet length or 0
 UDNetPeek               mx %00 
-
                         stz UDPacketLen
-
                         sep $30
                         ldx UDSlotNum
             			lda #UDCmd_NetPeek
@@ -124,40 +141,76 @@ UDNetPeek               mx %00
 
 UDPacketLen             dw #$0000
 
+    
+* x/y = addr; a is len
+UDPadEth                mx  %00
+                        cmp #64
+                        bcc :needs_pad
+                        rts
+:needs_pad              pei Ptr1
+                        pei Ptr1+2
+                        stx Ptr1
+                        sty Ptr1+2
+
+                        tay
+                        sep $20
+                        lda #0
+:pad                    stal [Ptr1],y
+                        iny
+                        cpy #64
+                        bne :pad
+                        rep $30
+                        pla
+                        sta Ptr1+2
+                        pla
+                        sta Ptr1
+                        lda #64
+                        sta UDPacketLen
+                        sta eth_outp_len
+                        rts
+
 * x/y = addr, a = len
 UDNetSend               mx %00
                         stx Ptr1
                         sty Ptr1+2
                         sta :_udsendlen+1
 
-                        ldy #0
+
                         sep $20
                         ldx UDSlotNum
+                        lda #UDCmd_NetSend
+                        stal UD_IO_Cmd,x
+                        lda :_udsendlen+1
+                        stal UD_IO_WData,x
+                        lda :_udsendlen+2
+:go_on                  stal UD_IO_WData,x
+                        
+                        ldy #0
 :copy_to_ud             ldal [Ptr1],y
                         stal UD_IO_WData,x
                         iny
 :_udsendlen             cpy #0000                   ; SMC
                         bne :copy_to_ud
                         sep $30
-                        lda #UDCmd_NetSend
-                        jsr UDIoExec
+                        * lda #UDCmd_NetSend
+                        jsr MENU_IO_Exec        ; exec only
                         bcc :okay
                         brk $A5   ; A5= ASSERT 
 :okay                   rep $30
                         rts
 
-* x/y = addr, a = len (or from udnetpeek?)
+* x/y = addr , UDPacketLen should be set from previous call to UDNetPeek
 UDNetRecv               mx %00
                         stx Ptr1
                         sty Ptr1+2
 
-                        ldal [Ptr1]
-                        pha
-                        ldy #2
-                        ldal [Ptr1],y
-                        sta Ptr1+2
-                        pla
-                        sta Ptr1
+                        * ldal [Ptr1]     ; deref handle
+                        * pha
+                        * ldy #2
+                        * ldal [Ptr1],y
+                        * sta Ptr1+2
+                        * pla
+                        * sta Ptr1
   
                         sep $30
                         lda #UDCmd_NetRcvd

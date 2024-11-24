@@ -47,7 +47,7 @@ routines                dw  UDLinkInterfaceV
                         dw  UDLinkConnect
                         dw  UDLinkReconStatus
                         dw  udreconnect
-                        dw  uddisconnect
+                        dw  UDDisconnect
                         dw  UDLinkGetVariables
                         dw  UDLinkConfigure
                         dw  UDLinkConfigFileName
@@ -117,6 +117,7 @@ join                    anop
 
 linkstre                str 'Stopping UltimateDrive Ethernet Adapter'
 
+
 * Returns a flag indicating whether the module is in a state to reconnect.
 UDLinkReconStatus
                         lda #false
@@ -144,50 +145,206 @@ UDLinkGetPacket
 
                         jsr UDNetPeek
 
-                        beq none
+                        bne :get_pak
+                        brl :none
+:get_pak
+                        * PushLong #0                   ; now we must create a handle to pass back the updated data
+                        * PushWord #0                   ; addr pad
+                        * PushWord UDPacketLen          
+                        * PushWord UserID
+                        * pea $18 ; attributes
+                        * PushLong #0
+                        * _NewHandle
+                        * PullLong temphandle
+                        * ldx temphandle
+                        * ldy temphandle+2
 
-                        PushLong #0                   ; now we must create a handle to pass back the updated data
-                        PushWord #0                   ; addr pad
-                        PushWord UDPacketLen          
-                        PushWord UserID
-                        pea $18 ; attributes
-                        PushLong #0
+
+                        ldx #eth_inp
+                        ldy #^eth_inp
+                        jsr UDNetRecv       ; todo: check error
+
+                        jsr Button0Dn       ; debug out  --------------
+                        bcc :noprint
+                        jsr PrintReceived
+                        lda UDPacketLen     ; 
+                        ldx #eth_inp
+                        ldy #^eth_inp
+                        jsr HexDumpBuffer   ; -------------------------
+:noprint
+                        lda UDPacketLen
+                        sta eth_inp_len
+
+
+* Back to Uther code
+                        lda	eth_inp+12	; type should be 08xx
+	                    and	#$ff
+	                    cmp	#8
+	                    bne	:nogo		; not an ip packet so discard it
+                        BorderColor #1
+                        lda	eth_inp+13
+                        and	#$ff
+                        bne	:seearp
+                        brl	:ip
+
+:seearp                 
+	                    cmp	#eth_proto_arp	; arp = 06
+	                    beq	:arppkt
+
+:nogo                   brl :none
+
+:arppkt             
+                        BorderColor #2
+                        lda eth_inp+ap_op           ; should be 0
+                        and #$ff
+                        bne :badpacket
+                        lda eth_inp+ap_op+1         ; check opcode
+                        and #$ff
+                        cmp #1                      ; request?
+                        beq :request
+                        cmp #2                      ; reply?
+                        bne :badpacket
+                        brl :reply
+
+:badpacket               
+                        BorderColor #3
+                        brl :none
+
+:request
+                    	ldx	#2
+:chkadr                 lda	eth_inp+ap_tp,x	; check if they're asking for
+	                    cmp	UDConfiguration+2,x	; my address
+                        bne	:done
+                        dex
+                        dex
+                        bpl	:chkadr	
+                        BorderColor #$f
+	                    jsr	ac_add_source	; add them to arp cache
+
+	                    ldx	#4		; send reply
+:bldreply               lda eth_inp+ap_shw,x
+                        sta	eth_outp,x	; set sender packet dest
+                        sta	eth_outp+ap_thw,x	; and as target
+                        lda	UDConfiguration+14,x	; me as source
+                        sta	eth_outp+ap_shw,x
+                        dex
+                        dex
+                        bpl	:bldreply
+                        BorderColor #5
+                        
+	                    ldx	#4
+:setmac	                lda	UDConfiguration+14,x
+                        sta	eth_outp+6,x
+                        dex
+                        dex
+                        bpl	:setmac
+
+                        jsr	makearppacket	; add arp, eth, ip, hwlen, protolen
+
+                        lda	#$0200		; set opcode (reply = 0002)
+                        sta	eth_outp+ap_op
+
+	                    ldx	#2
+:setadr                 lda eth_inp+ap_sp,x	; sender as target addr
+                        sta	eth_outp+ap_tp,x
+                        lda	UDConfiguration+2,x	; my ip as source addr
+                        sta	eth_outp+ap_sp,x
+                        dex
+                        dex
+                        bpl	:setadr
+
+                        lda	#ap_packlen	; set packet length
+                        sta	eth_outp_len
+
+                        ldx #eth_outp
+                        ldy #^eth_outp
+                        lda eth_outp_len
+	                    * jsr	eth_tx	; send packet
+                        jsr UDNetSend
+:done 
+	                    brl	:none
+
+:reply                  jsr PrintArpReply
+                        jsr DumpCurrentRecvBuf
+
+                        lda arp_state
+                        cmp #arp_wait               ; are we waiting for a reply?
+                        beq :skipper
+                        brl :badpacket
+                        ;bne :badpacket
+:skipper
+                        BorderColor #0
+                        jsr ac_add_source           ; add to cache
+
+                        lda #arp_idle
+                        sta arp_state
+
+                        brl :none
+
+:ip                                                 ; we have an ip datagram!
+                        lda eth_inp
+                        and #$ff
+                        cmp #$52
+                        bne :not_me
+:bk                   ;     brk $52
+:not_me               
+                        pha
+                        pha
+                        pea 0
+                        sec
+                        lda eth_inp_len             ; how much space
+                        sbc #eth_data               ; don't need the ethernet header
+                        sta len
+                        pha
+                        lda UserID
+                        pha
+                        pea $0018                   ; mem atributes
+                        pea 0
+                        pea 0
                         _NewHandle
-                        PullLong temphandle
+                        ply
+                        plx
 
+                        sty tmppkthandle
+                        stx tmppkthandle+2
 
-                        sep $30
-                        lda :gpc
-                        stal $00c034
-                        eor #$F
-                        sta :gpc
-                        rep $30
-                 
-                        ldx temphandle
-                        ldy temphandle+2
-                        jsr UDNetRecv
+                        * PushLong ip_inp
+                        pea #^ip_inp
+                        pea #ip_inp
 
+                        phx
+                        phy
+                        pea 0
+                        lda len
+                        pha
+                        _PtrToHand
 
-                        lda	temphandle
+                        BorderColor #9
+
+                        lda	tmppkthandle
                         sta	parmstackb,s
-                        lda	temphandle+2
+                        lda	tmppkthandle+2
                         sta	parmstackb+2,s
                         lda	#terrok
                         plb
                         clc
                         rtl
-                                            
 
-none anop
-
-                        lda	#0
+:none                  	lda	#0
                         sta	parmstackb,s
                         sta	parmstackb+2,s
                         plb
                         clc
-                        rtl
+                        rtl                               
+
 :gpc db 0
-        
+DumpCurrentRecvBuf
+                        lda UDPacketLen     ; 
+                        ldx #eth_inp
+                        ldy #^eth_inp
+                        jsr HexDumpBuffer   ; -------------------------
+                        rts
+
 DBBACK dw 0
 * Sends an IP datagram to the network via the module’s datagram encapsulation.
 UDLinkSendPacket        
@@ -212,7 +369,7 @@ UDLinkSendPacket
                         sta tick_count_start
                         plx
                         stx tick_count_start+2
-
+         
 nocount                 lda parmstack+2,s             ; weird shift because i moved the bank code before this so stack is off by 1
                         sta loopin+1
                         lda parmstack+3,s
@@ -332,6 +489,31 @@ nextmac                 anop
                         rep $30
                         brl arp_ok
 
+; add source to cache
+
+ac_add_source           anop
+
+                        lda #eth_inp+ap_shw
+                        sta ap
+
+                        ldx #68                     ; make space in the arp cache
+:movearp                 anop
+                        lda arp_cache,x
+                        sta arp_cache+10,x
+                        dex
+                        dex
+                        bpl :movearp
+
+                        ldy #8
+:copyarp                 anop
+                        lda (ap),y                  ; copy source
+                        sta arp_cache,y
+                        dey
+                        dey
+                        bpl :copyarp
+                        rts
+
+
 cachemiss               anop
 
                         rep $30
@@ -388,15 +570,23 @@ setip                   lda UDConfiguration+2,x       ; set source ip addr
 
 
                         lda eth_outp_len
+                        ldx #eth_outp
+                        ldy #^eth_outp
+                        jsr UDPadEth
+
+                        jsr PrintSendArp
+                        lda eth_outp_len
                         ldx #eth_outp               ; a is already set to len
                         ldy #^eth_outp
                         jsr HexDumpBuffer
+
 
                         lda eth_outp_len
                         ldx #eth_outp               ; a is already set to len
                         ldy #^eth_outp
                         jsr UDNetSend
                         ; jsr eth_tx                  ; send packet
+
 
                         lda #arp_wait               ; waiting for reply
                         sta arp_state
@@ -427,7 +617,12 @@ setmac_s                lda arp_mac,x               ; copy destination mac addre
                         lda #$0008                  ; set type to ip
                         sta eth_outp+eth_type
 
-                        ~WriteCString SendArpText
+                        lda eth_outp_len
+                        ldx #eth_outp
+                        ldy #^eth_outp
+                        jsr UDPadEth
+
+                        jsr PrintSend
                         lda eth_outp_len
                         ldx #eth_outp
                         ldy #^eth_outp
@@ -440,6 +635,7 @@ setmac_s                lda arp_mac,x               ; copy destination mac addre
                         ;jsr eth_tx                  ; send packet and return status
                         bcc send_ok
                         ldy #terrlinkerror
+                        brk $A6
                         bra cleanup
 send_ok                 
                         ldy #terrok
@@ -456,47 +652,7 @@ cleanup
                         tya
                         rtl
 
-
-
-                        sep $30
-                        lda :spc
-                        stal $00c034
-                        eor #$F
-                        sta :spc
-                        rep $30
-                 
-                        ~WriteCString SendText
-
-                        lda	parmstack+2,s
-                        tay
-                        lda	parmstack+4,s
-                        tax
-                        lda	parmstack,s	; length
-                        jsr HexDumpBuffer
-
-
-                        lda	parmstack+2,s
-                        tay
-                        lda	parmstack+4,s
-                        tax
-                        lda	parmstack,s	; length
-                        jsr UDNetSend
-                        
-                        bcc	:send_ok
-                        ldy	#terrlinkerror
-                        bra	:cleanup
-:send_ok		
-                        ldy	#terrok
-:cleanup  
-                        plb
-                        pla
-                        sta	5,s
-                        pla
-                        sta	5,s
-                        pla
-                        tya
-                        rtl
-:spc db $1                        
+          
 * Starts the link layer module once it is loaded. The module should
 * perform any initialisation tasks short of actually starting a connection.
 UDLinkStartup
@@ -605,7 +761,7 @@ UDLinkConfigure         phb
                         iny
                         iny
                         ora [cfghandle],y           ; check if zero
-                        beq zerolen
+                        beq :copy_default_config
                         lda [cfghandle]             ; use the handle to get the address of the config area
                         sta cfgptr
                         ldy #2
@@ -613,9 +769,9 @@ UDLinkConfigure         phb
                         sta cfgptr+2                ; now cfgptr points to actual config area
                         lda [cfgptr]                ; test first word should match the config version
                         cmp #cfgvers                ;check version
-                        *   beq                     versok
+                        beq :cfg_ok
 
-zerolen                                             ; CREATE new config
+:copy_default_config                                ; CREATE new config
                         PushLong #cfglen
                         PushLong cfghandle
                         _SetHandleSize              ; set empty handle to size of our data
@@ -625,7 +781,7 @@ zerolen                                             ; CREATE new config
                         PushLong #cfglen
                         _PtrToHand                  ; copy our default data over
 
-versok
+:cfg_ok
 
                         lda [cfghandle]             ; use the handle to get the address of the config area
                         sta cfgptr
@@ -964,7 +1120,7 @@ alert_strp2             pea 0
 * Is this call not yet in use?  UDLinkConfigure doesn't seem to need it.
 * I'm marking as done though I believe that "[4]" is buggy.
 * @todo: check marinetti code for relevance
-UDLinkConfigFileName    brk $12
+UDLinkConfigFileName    
                         TSC
                         PHD
                         TCD
@@ -1090,8 +1246,11 @@ docfg
 
 
 
+                        jsr PrintNetStatus
 
                         jsr UDConnect             ; THIS starts the w5500 & ethernet link & gets MAC
+
+
                         ldx #0
 :copy_mac               lda UDMacAddr,x
                         sta UDConfiguration+14,x
@@ -1179,6 +1338,8 @@ no_dhcp
 
                         lda #true
                         sta MarinettiVariables+lvconnected
+                        jsr PrintNetStatus
+
                         lda #terrok
                         sta err_return
 
@@ -1221,7 +1382,7 @@ wiz_slot_offset         dw  $0040
 
 -------------------------------------------------------------------
 ; adds first six bytes of ethernet header
-maketheheader           anop
+maketheheader
 
                         ldx #4
                         lda #$ffff
@@ -1233,7 +1394,7 @@ setbrd                  sta eth_outp,x
                         rts
 
 ; adds proto = arp, hw = eth, and proto = ip to outgoing packet
-makearppacket           anop
+makearppacket
 
                         lda #$0608                  ; eth_proto_arp = hi 08 - lo
                         sta eth_outp+eth_type
@@ -1455,7 +1616,7 @@ UDConfiguration         ds  cfglen                  ; 30 total - this is our act
 STTTTTTTTTTTTUUUUUUUUUUUUUUUUUUBS
 udreconstatus
 udreconnect
-uddisconnect
+
 
 :okaaaa                 lda #terrok
                         clc
@@ -1487,7 +1648,7 @@ testalert               asc '63~UltimateDrive Link Layer',0D0D
 UserID                  dw  0                       ; Program's ID from MemoryManager
 
 * my direct space on marinetti's direct page $E0-$FF available
-* tmppkthandle equ $e0
+tmppkthandle equ $e0
 * cnt			equ $e4
 cfghandle               equ $E8
 cfgptr                  equ $EC
@@ -1496,6 +1657,7 @@ ap                      equ $F0
 ipmask                  equ $F4
 ipgw                    equ $F8
 bufsize                 dw  #1518                   ; Size
+len	                    dw 0		; Packet length counter
 
 * input and output buffers
 eth_inp_len             ds  2                       ; input packet length
@@ -1628,6 +1790,10 @@ parmstack               equ 4
 parmstackb              equ 1+parmstack
 
 myllintvers             equ 2
+
+
+FORCEARP                hex ff,ff,ff,ff,ff,ff,52,06,00,49,00,3d,08,06,00,01,08,00,06,04,00,01,52,06,00,49,00,3d,c0,a8,89,04,00,00,00,00,00,00,c0,a8,89,01,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
+FORCEARPLEN = *-FORCEARP
 
                         put marinetti_equates
                         put udnetrz
