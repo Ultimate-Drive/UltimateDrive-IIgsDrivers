@@ -25,10 +25,12 @@ __b                     brk $b1
 
 
 BorderColor             MAC
+                        DO DEBUG_BORDER
                         sep $30 
                         lda #]1
                         stal $00c034
                         rep $30 
+                        FIN
                         EOM
 
 * xy=adr =len

@@ -23,6 +23,10 @@
 *****************************************************************
 
 
+** "#IFDEFS" to control how we're building this:
+DEBUG_OUT               = 0 ; 1=on 0=off
+DEBUG_BORDER            = 0 ;
+
 *                        XPL
                         mx  %00
                         REL
@@ -164,6 +168,7 @@ UDLinkGetPacket
                         ldy #^eth_inp
                         jsr UDNetRecv       ; todo: check error
 
+                        DO  DEBUG_OUT
                         jsr Button0Dn       ; debug out  --------------
                         bcc :noprint
                         jsr PrintReceived
@@ -172,6 +177,7 @@ UDLinkGetPacket
                         ldy #^eth_inp
                         jsr HexDumpBuffer   ; -------------------------
 :noprint
+                        FIN
                         lda UDPacketLen
                         sta eth_inp_len
 
@@ -264,8 +270,10 @@ UDLinkGetPacket
 :done 
 	                    brl	:none
 
-:reply                  jsr PrintArpReply
+:reply                  DO DEBUG_OUT
+                        jsr PrintArpReply
                         jsr DumpCurrentRecvBuf
+                        FIN
 
                         lda arp_state
                         cmp #arp_wait               ; are we waiting for a reply?
@@ -308,7 +316,7 @@ UDLinkGetPacket
                         sty tmppkthandle
                         stx tmppkthandle+2
 
-                        * PushLong ip_inp
+                        * PushLong ip_inp            ;< This doesn't work and you can't put a # in front of it!! merlin32 bug?
                         pea #^ip_inp
                         pea #ip_inp
 
@@ -574,12 +582,13 @@ setip                   lda UDConfiguration+2,x       ; set source ip addr
                         ldy #^eth_outp
                         jsr UDPadEth
 
+                        DO DEBUG_OUT
                         jsr PrintSendArp
                         lda eth_outp_len
                         ldx #eth_outp               ; a is already set to len
                         ldy #^eth_outp
                         jsr HexDumpBuffer
-
+                        FIN
 
                         lda eth_outp_len
                         ldx #eth_outp               ; a is already set to len
@@ -622,11 +631,13 @@ setmac_s                lda arp_mac,x               ; copy destination mac addre
                         ldy #^eth_outp
                         jsr UDPadEth
 
+                        DO DEBUG_OUT
                         jsr PrintSend
                         lda eth_outp_len
                         ldx #eth_outp
                         ldy #^eth_outp
                         jsr HexDumpBuffer
+                        FIN
 
                         lda eth_outp_len
                         ldx #eth_outp
@@ -1245,9 +1256,9 @@ docfg
                         _SetRandSeed
 
 
-
+                        DO DEBUG_OUT
                         jsr PrintNetStatus
-
+                        FIN
                         jsr UDConnect             ; THIS starts the w5500 & ethernet link & gets MAC
 
 
@@ -1338,8 +1349,10 @@ no_dhcp
 
                         lda #true
                         sta MarinettiVariables+lvconnected
+                        DO DEBUG_OUT
                         jsr PrintNetStatus
-
+                        FIN
+                        
                         lda #terrok
                         sta err_return
 
