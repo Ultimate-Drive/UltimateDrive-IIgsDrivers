@@ -5,7 +5,7 @@
 **          by Dagen Brock (c) 2024             **
 **************************************************
 
-UDRomSig                asc 'UltimateDrive'         ; switch to '' if high/low bit
+UDRomSig                asc 'UltimateDrive'         ; Slot ROM signature
 UDRomSigLen             =   *-UDRomSig
 UDRomSigOffset          =   $EC
 UDSlotNum               dw  0                       ; slot num * 16   e.g. slot 6 = #$0060  is word for 16-bit compat 
@@ -71,7 +71,7 @@ MENU_IO_Exec            mx  %11
 
 
 * helper function - returns actual slot number 0-7
-* must call UDDetectSlot first! 
+* must call UDDetectSlot first!
 UDGetSlot               mx  %00
                         lda UDSlotNum
                         lsr
@@ -82,13 +82,13 @@ UDGetSlot               mx  %00
                         rts
 
 * Connect network adapter and read the MAC address supplied by the firmware
-UDConnect               mx %00
+UDConnect               mx  %00
                         sep $30
                         lda #UDCmd_NetOpen
                         jsr UDIoExec
-                        bcc :ok                   ; error
-                        brk $C0 ; C0nnect error
-:ok                        rep $30
+                        bcc :ok                     ; error
+                        ;brk $C0                     ; C0nnect error
+:ok                     rep $30
 
                         ldy #UDMacAddr
                         lda #6
@@ -98,12 +98,12 @@ UDConnect               mx %00
 
 
 * Disconnect network adapter and ... ??
-UDDisconnect            mx %00
+UDDisconnect            mx  %00
                         sep $30
                         lda #UDCmd_NetClose
                         jsr UDIoExec
-                        bcs :exit                   ; error 
-                        ; blah
+                        bcs :exit                   ; error
+                                                    ; blah
 :exit                   rep $30
                         rts
 
@@ -122,26 +122,26 @@ UDNetStatus             mx  %00
                         lda UDNetStatusBytes
                         rts
 
-UDNetStatusBytes        dw #$0000   ;WIZCHIP_READ(PHYCFGR), WIZCHIP_READ(VERSIONR)
+UDNetStatusBytes        dw  #$0000                  ;WIZCHIP_READ(PHYCFGR), WIZCHIP_READ(VERSIONR)
 
 * return pending packet length or 0
-UDNetPeek               mx %00 
+UDNetPeek               mx  %00
                         stz UDPacketLen
                         sep $30
                         ldx UDSlotNum
-            			lda #UDCmd_NetPeek
-    		            jsr UDIoExec
-    		            ldal UD_IO_RData,x 
-			            sta	UDPacketLen
-			            ldal UD_IO_RData,x 
+                        lda #UDCmd_NetPeek
+                        jsr UDIoExec
+                        ldal UD_IO_RData,x
+                        sta UDPacketLen
+                        ldal UD_IO_RData,x
                         sta UDPacketLen+1
                         rep $30
                         lda UDPacketLen
                         rts
 
-UDPacketLen             dw #$0000
+UDPacketLen             dw  #$0000
 
-    
+
 * x/y = addr; a is len
 UDPadEth                mx  %00
                         cmp #64
@@ -170,7 +170,7 @@ UDPadEth                mx  %00
                         rts
 
 * x/y = addr, a = len
-UDNetSend               mx %00
+UDNetSend               mx  %00
                         stx Ptr1
                         sty Ptr1+2
                         sta :_udsendlen+1
@@ -184,7 +184,7 @@ UDNetSend               mx %00
                         stal UD_IO_WData,x
                         lda :_udsendlen+2
 :go_on                  stal UD_IO_WData,x
-                        
+
                         ldy #0
 :copy_to_ud             ldal [Ptr1],y
                         stal UD_IO_WData,x
@@ -192,26 +192,18 @@ UDNetSend               mx %00
 :_udsendlen             cpy #0000                   ; SMC
                         bne :copy_to_ud
                         sep $30
-                        * lda #UDCmd_NetSend
-                        jsr MENU_IO_Exec        ; exec only
+                        *   lda                     #UDCmd_NetSend
+                        jsr MENU_IO_Exec            ; exec only
                         bcc :okay
-                        brk $A5   ; A5= ASSERT 
+                        ;brk $A5                     ; A5= ASSERT
 :okay                   rep $30
                         rts
 
 * x/y = addr , UDPacketLen should be set from previous call to UDNetPeek
-UDNetRecv               mx %00
+UDNetRecv               mx  %00
                         stx Ptr1
                         sty Ptr1+2
 
-                        * ldal [Ptr1]     ; deref handle
-                        * pha
-                        * ldy #2
-                        * ldal [Ptr1],y
-                        * sta Ptr1+2
-                        * pla
-                        * sta Ptr1
-  
                         sep $30
                         lda #UDCmd_NetRcvd
                         jsr UDIoExec
@@ -220,17 +212,17 @@ UDNetRecv               mx %00
                         sep $20
                         ldx UDSlotNum
 :copy_from_ud           ldal UD_IO_RData,x
-                        stal   [Ptr1],y
+                        stal [Ptr1],y
                         iny
 :_udsendlen             cpy UDPacketLen
                         bne :copy_from_ud
-                        
+
                         rep $30
                         rts
 
 
 
-                        mx %00
+                        mx  %00
 **  a=len   y=buff addr (local bank only)
 UdIoRDataToBuff         sty :wbuf+1
 noerr                   sep $30

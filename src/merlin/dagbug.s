@@ -33,6 +33,28 @@ BorderColor             MAC
                         FIN
                         EOM
 
+* x = iterations (len)  y= tone (delay)
+BLEEP                   mx %00
+                        sty :bdel+1
+                        sep $20
+:bloop
+:bdel                   ldy #$0000 ; SMC
+:delay                  dey
+                        bne :delay
+                        stal $00c030
+                        dex 
+                        bne :bloop
+                        rep $30
+                        rts
+                        
+
+DumpCurrentRecvBuf      mx %00
+                        lda UDPacketLen    
+                        ldx #eth_inp
+                        ldy #^eth_inp
+                        jsr HexDumpBuffer  
+                        rts
+
 * xy=adr =len
 HexDumpBuffer           mx  %00
                                                     ; hexify whatever
