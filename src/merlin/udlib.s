@@ -203,11 +203,10 @@ UDNetSend               mx  %00
 UDNetRecv               mx  %00
                         stx Ptr1
                         sty Ptr1+2
-
                         sep $30
                         lda #UDCmd_NetRcvd
                         jsr UDIoExec
-
+                        rep $30
                         ldy #0
                         sep $20
                         ldx UDSlotNum
@@ -223,7 +222,7 @@ UDNetRecv               mx  %00
 
 
                         mx  %00
-**  a=len   y=buff addr (local bank only)
+**  a=len   y=buff addr (local bank only)  only up to 255 bytes... ?
 UdIoRDataToBuff         sty :wbuf+1
 noerr                   sep $30
                         sta :limit+1
@@ -253,7 +252,7 @@ UDCmd_NetSend           =   $72                     ;
 UDCmd_NetRcvd           =   $73                     ;
 UDCmd_NetPeek           =   $74                     ;
 UDCmd_NetStatus         =   $75                     ;
-UDCmd_NetSDMA           =   $76                     ; send Frame Via DMA
+UDCmd_NetSDMA           =   $76                     ; send Frame via DMA
 UDCmd_NetRDMA           =   $77                     ; read Frame via DMA
 
 

@@ -197,19 +197,19 @@ UDLinkGetPacket
 
                         bne :get_pak
                         brl :none
-:get_pak
-                        * PushLong #0                   ; now we must create a handle to pass back the updated data
-                        * PushWord #0                   ; addr pad
-                        * PushWord UDPacketLen          
-                        * PushWord UserID
-                        * pea $18 ; attributes
-                        * PushLong #0
-                        * _NewHandle
-                        * PullLong temphandle
-                        * ldx temphandle
-                        * ldy temphandle+2
-
-
+:get_pak                cmp #1518
+                        bcc :no2long
+                        
+                        *  lda #2
+                        * ldx #UDPacketLen     ; 
+                        * ldy #^UDPacketLen     ; 
+                        * jsr HexDumpBuffer   ; -------------------------
+                            sep $30
+                        lda #UDCmd_NetRcvd
+                        jsr UDIoExec
+                        rep $30
+                        brl :none
+:no2long
                         ldx #eth_inp
                         ldy #^eth_inp
                         jsr UDNetRecv       ; todo: check error
@@ -331,6 +331,7 @@ UDLinkGetPacket
                         brl :none
 
 :ip                                                 ; we have an ip datagram!
+
                         pha
                         pha
                         pea 0
