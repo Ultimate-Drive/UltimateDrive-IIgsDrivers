@@ -199,7 +199,10 @@ UDLinkGetPacket
                         brl :none
 :get_pak                cmp #1518
                         bcc :no2long
-                        
+                        lda #1518
+                        sta UDPacketLen
+                        BorderColor #5
+                        bra :no2long
                         *  lda #2
                         * ldx #UDPacketLen     ; 
                         * ldy #^UDPacketLen     ; 
