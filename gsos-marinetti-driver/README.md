@@ -1,5 +1,6 @@
-# UDnet
-Ultimate Drive Network Driver (for Marinetti)
+# UltimateDrive Network Driver (for Marinetti)
+
+## _aka UDNET_
 
 This repo also includes Uthernet driver source for comparison.
 
