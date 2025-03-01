@@ -1,10 +1,9 @@
-# UDnet
-Ultimate Drive Network Driver (for Marinetti)
+# UltimateDrive Apple IIgs Drivers
 
-This repo also includes Uthernet driver source for comparison.
 
-Uthernet sources are all rights reserved by the authors within. 
+This is a collection of drivers and tools for enhanced native support of the UltimateDrive when running under GSOS on your 🍎Apple IIgs🍎.
 
-When this line and the following line are removed, these sources can be trusted as working
-
-These sources are a work in progress, and are not yet currently in working order.
+## Projects
+- gsos-device-driver - improved drive speed under GSOS
+- gsos-marinetti-driver - networking support for GSOS using Marinetti TCPIP stack
+- gsos-nda - New Desk Accessory for changing images and settings from the Desktop
