@@ -1,7 +1,7 @@
 *****************************************************************
 *  UltimateDrive Marinetti Link Layer
-*  Contributors:  Dagen Brock (w/ heavy cribbing from uthernet)
-*
+*  Author: Dagen Brock 
+*  Reference: Uthernet Drivers
 *
 * Marinetti3 Programming Guide
 * https://www.apple2.org/marinetti/Mar30ProgGuide.pdf

@@ -1,14 +1,14 @@
 TARGET1 = udnet.s
 WORKDIR1 = gsos-marinetti-driver/src/merlin
-CLEAN1 = udnet
+OUT1 = udnet
 
 TARGET2 = nda.s
 WORKDIR2 = gsos-nda/src
-CLEAN2 = udnda
+OUT2 = udnda
 
 TARGET3 = gsosdriver.s
 WORKDIR3 = gsos-device-driver/src
-CLEAN3 = udgsosdev
+OUT3 = uddevice
 
 MERLIN = merlin32
 MACRODIR := "$(CURDIR)/lib/merlin-macros"
@@ -19,6 +19,7 @@ all:
 	@cd $(WORKDIR1) && $(MERLIN) $(MERLIN_FLAGS) $(TARGET1)
 	@cd $(WORKDIR2) && $(MERLIN) $(MERLIN_FLAGS) $(TARGET2)
 	@cd $(WORKDIR3) && $(MERLIN) $(MERLIN_FLAGS) $(TARGET3)
+	@echo "\nChecking out files:\n" ; ls -al $(WORKDIR1)/$(OUT1) $(WORKDIR2)/$(OUT2) $(WORKDIR3)/$(OUT3)
 
 udnet:
 	@cd $(WORKDIR1) && $(MERLIN) $(MERLIN_FLAGS) $(TARGET1)
@@ -28,7 +29,7 @@ device:
 	@cd $(WORKDIR3) && $(MERLIN) $(MERLIN_FLAGS) $(TARGET3)
 
 clean:
-	@rm -f $(WORKDIR1)/$(CLEAN1)
-	@rm -f $(WORKDIR2)/$(CLEAN2)
-	@rm -f $(WORKDIR3)/$(CLEAN3)
+	rm -f $(WORKDIR1)/$(OUT1)
+	rm -f $(WORKDIR2)/$(OUT2)
+	rm -f $(WORKDIR3)/$(OUT3)
 	

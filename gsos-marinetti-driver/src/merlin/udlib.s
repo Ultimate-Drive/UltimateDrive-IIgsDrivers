@@ -2,7 +2,7 @@
 ** UltimateDrive Calling Library for 65816 CPUs **
 ****                                          ****
 **      Intended for Apple IIgs Computers       **
-**          by Dagen Brock (c) 2024             **
+**        by Dagen Brock (c) 2024-2025          **
 **************************************************
 
 UDRomSig                asc 'UltimateDrive'         ; Slot ROM signature
