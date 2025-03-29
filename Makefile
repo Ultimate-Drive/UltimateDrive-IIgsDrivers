@@ -26,7 +26,7 @@ all:
 
 image:
 	@echo "\nCreating $(OUTIMAGE).po and adding files...\n"
-	@echo "UltimateDrive=Type(BB),AuxType(0101),VersionCreate(70),MinVersion(BE),Access(E3),FolderInfo1(000000000000000000000000000000000000),FolderInfo2(000000000000000000000000000000000000)" > $(WORKDIR3)/_FileInformation.txt 
+	@echo "UltimateDrive=Type(BB),AuxType(0102),VersionCreate(70),MinVersion(BE),Access(E3),FolderInfo1(000000000000000000000000000000000000),FolderInfo2(000000000000000000000000000000000000)" > $(WORKDIR3)/_FileInformation.txt 
 
 	@cadius createvolume $(OUTIMAGE).po $(OUTIMAGE) 800kb
 	@cadius addfile $(OUTIMAGE).po /$(OUTIMAGE) $(WORKDIR1)/$(OUT1)
@@ -39,6 +39,18 @@ nda:
 	@cd $(WORKDIR2) && $(MERLIN) $(MERLIN_FLAGS) $(TARGET2)
 device:
 	@cd $(WORKDIR3) && $(MERLIN) $(MERLIN_FLAGS) $(TARGET3)
+
+
+install:
+	@cadius addfile gsoshd.po /gsos/System/Drivers/ $(WORKDIR3)/$(OUT3)
+
+uninstall:
+	@cadius deletefile gsoshd.po /gsos/System/Drivers/UltimateDrive
+
+sd:
+	@cp gsoshd.po /Volumes/ULTRA/
+	@diskutil eject /Volumes/ULTRA
+	@echo "Ejected."
 
 clean:
 	rm -f $(WORKDIR1)/$(OUT1)

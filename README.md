@@ -1,7 +1,7 @@
 # UltimateDrive Apple IIgs Drivers
 
 
-This is a collection of drivers and tools for enhanced native support of the UltimateDrive when running under GSOS on your 🍎Apple IIgs🍎.
+This is a collection of drivers and tools for enhanced native support of the UltimateDrive when running under GS/OS on your Apple IIgs. 🍎
 
 ## Projects
 - gsos-device-driver - improved drive speed under GSOS
