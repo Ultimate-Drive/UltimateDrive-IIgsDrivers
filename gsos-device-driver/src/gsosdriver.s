@@ -62,11 +62,12 @@ UDriveHeader            da  DIBs-UDriveHeader       ; offset to 1st DIB, one per
 * $3A - LongWord - extendedDibPtr  - Pointer to additional device information
 * $3E - Word     - DIBDevNum       - Initial device number (assigned at startup)
 DIBs
-_dib0                   adrl _dib1                  ; +00 pointer to the next DIB
+_dib0                   adrl #0                  ; +00 pointer to the next DIB
                         adrl MainEntry              ; +04 driver entry point
                         dw  DEVCHARACTERISTICS      ; +08 characteristics
                         ds  4                       ; +0A block count
-:devname                str 'UDriveDevice-H01'      ; +0E device name
+                        ; adrl #65535 ; block count of harddisk image for testing only!
+:devname                str 'UDRIVE-H01'      ; +0E device name
                         ds  #32-{*-:devname}        ;  .. Padding to 32 bytes
 _udSlot0                dw  $0000                   ; +2E slot number
                         dw  $0001                   ; +30 unit number
@@ -125,12 +126,14 @@ _udSlot3                dw  $0000                   ; +2E slot number
 ** Dispatch Routine - per Apple IIgs GS/OS Device Driver Reference (p) 193
 *
 * A = Call number
-MainEntry               phk
+MainEntry               phb
+                        phk
                         plb
 *                         cmp #0
 *                         beq :go
-*                         cmp #5
+*                         * cmp #5
 *                         beq :go
+*                         stal $0c0000
 *                         brk $00
 * :go
                         asl
@@ -139,18 +142,26 @@ MainEntry               phk
                         jsr (dispatchTable,x)
                         lda errCode
 :done_prep_result       cmp #$0001
+                        plb
                         rtl
 
 ** For a more detailed explanation of driver calls, see Chapter 10, "GS/OS Driver Call Reference."
 dispatchTable           da  Driver_Startup          ; Prepares a device for all other device-related calls - first call
-                        da  Driver_Open             ; Pepares a character device for conducting I/O transactions
+                        da  Driver_Open             ; (NA) Pepares a character device for conducting I/O transactions
                         da  Driver_Read             ; Reads data from a character device or a block device
                         da  Driver_Write            ; Writes data to a character device or a block device
-                        da  Driver_Close            ; Resets the driver to its nonopen state
+                        da  Driver_Close            ; (NA) Resets the driver to its nonopen state
                         da  Driver_Status           ; Gets information about the status of a specific device
-                        da  Driver_Control          ; Sends control information or requests to a specific device
-                        da  Driver_Flush            ; Writes out any characters in a character driver's buffer
+                        da  Driver_Control          ; (NA) Sends control information or requests to a specific device
+                        da  Driver_Flush            ; (NA) Writes out any characters in a character driver's buffer
                         da  Driver_Shutdown         ; Prepares a device driver to be purged
+
+** Not implemented for block devices
+Driver_Open             
+Driver_Close            
+Driver_Flush            
+Driver_Control         
+                        rts
 
 
 ** NOTE: A driver's DIB is not considered to contain valid information until the
@@ -159,28 +170,46 @@ dispatchTable           da  Driver_Startup          ; Prepares a device for all 
 **       no error during startup, it then becomes available for an applicaton to
 **       access without further initialization.
 Driver_Startup          BorderColor #0              ; CALLED 1st!
+
+                        * lda #BRKBAD
+                        * stal CTRLRESETVECTOR+1
+                        * stal OACTRLRESETVECTOR+1
+                        * lda #>BRKBAD
+                        * stal CTRLRESETVECTOR+2
+                        * stal OACTRLRESETVECTOR+2
+                        
                         jsr UDDetectSlot
                         jsr UDGetSlot
                         bne :card_found
                         brl Driver_Shutdown         ; no card (detect anyways...)
 :card_found             ora #$0008                  ; bit 3 = 1 for card slot
                         sta _udSlot0
-                        sta _udSlot1
+                      ;  sta _udSlot1
                         lda #1                      ; set active
                         sta udActive
-                        BorderColor #15
+                        BorderColor #12 ;green
                         rts
 
-** Not Implemented
-Driver_Open             BorderColor #1
+
+Driver_Shutdown         BorderColor #8              ;brown
+                        stz udActive
                         rts
+
 
 ** Need to copy 'requestCount' bytes starting at 'blockNum' from 'unitNum' of current dib @ 'dibPtr'
 ** Only change is we write transferCount, should reflect *actual* bytes, which it doesn't right now
 Driver_Read             BorderColor #14
-                        jsr DRDebug    
+                     
+                        jsr DRDebug
 
-                        ldy #$30 ; unitNum 
+
+
+                        lda requestCount
+                        ora requestCount+2
+                        bne :read1
+:read0                  clc ;return with no error (accumulator already 0)
+                        rts
+:read1                  ldy #$30 ; unitNum 
                         lda [dibPtr],y
                         and #$000F
                         jsr UDReadBlock
@@ -188,18 +217,11 @@ Driver_Read             BorderColor #14
                     	sta	transferCount
                         lda	requestCount+2
                         sta	transferCount+2
-
-                        BorderColor #12
-                        jsr DRDebug
-
-                        clc
+                        BorderColor #2
                         rts
 ** @todo
 Driver_Write            BorderColor #3
-                        rts
-
-** Not Implemented
-Driver_Close            BorderColor #4
+                        brk $12
                         rts
 
 BufferDebug             ldy #0
@@ -218,7 +240,8 @@ BufferDebug             ldy #0
                         rts
 
 
-DRDebug                 pha
+DRDebug                 DO DEBUG_TEXT
+                        pha
                         phx
                         phy
 
@@ -245,22 +268,27 @@ DRDebug                 pha
                         jsr DIBDebug                ; <-----------------------------
 
                         jsr WaitKey
-                        jsr TextClear
-                        jsr TextLibInit
-                        jsr BufferDebug
-                        jsr WaitKey
+                        * jsr TextClear
+                        * jsr TextLibInit
+                        * jsr BufferDebug
+                        * jsr WaitKey
                         and #$00ff
                         cmp #"a"
                         bne :cont
                         brk $DB
-:cont                   RESTOREVID
+:cont                   
+                          jsr TextLibInit
+                        jsr TextClear
+                        RESTOREVID
                         ply
                         plx
                         pla
+                        FIN
                         rts
 
 
-DSDebug                 pha
+DSDebug                 DO DEBUG_TEXT
+                        pha
                         phx
                         phy
 
@@ -305,6 +333,7 @@ DSDebug                 pha
                         ply
                         plx
                         pla
+                        FIN
                         rts
 
 DIBDebug                pha
@@ -390,17 +419,18 @@ volumeIDSTR             asc "       volumeID: ",00
 statusListSTR           asc "     statusList: ",00
 tmpSpace                ds  4
 
-Driver_Status           BorderColor #5              ; CALLED 2nd!
+Driver_Status           BorderColor #5              ;
                         lda statusCode
+                        brk $ff
                         cmp #5                      ; Only calls 0-4 are valid
                         bcc :do_status
                         lda drvBadCode              ; #$0021, Invalid control or status code
                         sta errCode
                         rts
-:do_status              asl
-                        tax
-                        stz transferCount
+:do_status              stz transferCount
                         stz transferCount+2
+                        asl
+                        tax
                         jsr (statusTable,x)
                         rts
 
@@ -412,7 +442,8 @@ statusTable             da  DSGetStatus             ; $0000 = GetDeviceStatus
                         da  DSNoOp                  ; $0004 = GetPartitionMap
 DSGet
 DSGetFormatOptions
-DSNoOp                  rts
+DSNoOp                ;  brk $44
+                        rts
 
 * Block Device Status:
 *
@@ -468,31 +499,19 @@ DSGetStatus             BorderColor #13             ; Yellow
 
 
 
-Driver_Control          BorderColor #6
-                        rts
-
-** Not Implemented
-Driver_Flush            BorderColor #7
-                        rts
-
-Driver_Shutdown         BorderColor #8              ;brown
-                        stz udActive
-                        rts
-
-
 
 
 *** config
-MAXDEVICES              =   #12                     ; @todo verify
+MAXDEVICES              =   #1                     ; @todo verify
 DEVVERSION              =   $001D                   ; v0.01d (developmental)  1000 for release
 DEVID_HDD               =   $0013                   ; Hard disk drive (generic) (page 185)
-DEVCHARACTERISTICS      =   $8BEC                   ; default characteristics 8FE8
+DEVCHARACTERISTICS      =   $4BE8                   ; default characteristics 8FE8
                                                     ;  8 1000 => RAM or ROM disk
                                                     ;  B 1011 => restartable + not speed dependent
                                                     ;  E 1110 => block device | write allowed | read allowed
                                                     ;  C 1100 => 1000 format allowed | removable media
 
-
+                            ; 4BE8
 
 
 ** COMMON VARIABLES
@@ -543,8 +562,14 @@ BorderColor             MAC
                         rep $30
                         FIN
                         EOM
+
+CTRLRESETVECTOR = $E10064
+OACTRLRESETVECTOR = $E11680
+
+
 *********************************************** DEBUG CODE END
 
 
                         put ../../lib/ultimate-drive/udlib.s
                         put ../../lib/textlib.s     ; this is really just for debugging
+                        use QD.Macs.s
