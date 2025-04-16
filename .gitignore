@@ -6,3 +6,8 @@ build_temp/
 config.kegs
 *_Output.txt
 _FileInformation.txt
+
+# binary output files to ignore
+gsos-device-driver/src/UltimateDrive
+gsos-marinetti-driver/src/merlin/udnet
+gsos-nda/src/udnda

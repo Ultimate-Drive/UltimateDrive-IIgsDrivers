@@ -17,8 +17,8 @@
                         rel
                         typ $bb                     ; All Apple IIcs driver load fìles must have a fìle type of $BB.
                                                     ; They may also be in Express Load format.
-                                                    ; aux $010C           ; AUXTYPE is $010C, but we can't set that here (Merlin32 bug?) so we set in Makefile
-* GS/OS Device Driver Ref P. 175 - re: auxtype
+                     ;   aux $010C                   ; AUXTYPE is $010C, but we can't set that here (Merlin32 bug?) so we set in Makefile
+** GS/OS Device Driver Ref P. 175 - re: auxtype
 *              High byte                                           Low byte
 * +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 * | 15 | 14 | 13 | 12 | 11 | 10 |  9 |  8 |  7 |  6 |  5 |  4 |  3 |  2 |  1 |  0 |
@@ -27,18 +27,15 @@
 *    |                |                         |                            |
 *    |                |                         +--> 0 = device driver       |
 *    |                |                              1 = supervisor driver   |
-*    |                |                                                      +--> Maximum number of devices (if device driver)
-*    |                |                                                           Undefined (if supervisor driver)
-*    |                +--> S01 = GS/OS driver
-*    |
-*    +--> 1 = inactive
-*         0 = active
+*    |                +--> S01 = GS/OS driver                                +--> Maximum number of devices (if device driver)
+*    |                                                                            Undefined (if supervisor driver)
+*    +--> 1 = inactive  0 = active
 
 
                         dsk UltimateDrive
                         use 4/Util.Macs
-DEBUG_BORDER            =   1                       ; on/off flag for debug borders
-DEBUG_TEXT              =   1                       ; on/off flag for debug borders
+DEBUG_BORDER            =   0                       ; on/off flag for debug borders
+DEBUG_TEXT              =   0                       ; on/off flag for debug borders
 
 
 UDriveHeader            da  DIBs-UDriveHeader       ; offset to 1st DIB, one per device p.176-180
@@ -61,13 +58,14 @@ UDriveHeader            da  DIBs-UDriveHeader       ; offset to 1st DIB, one per
 * $38 - Word     - forwardLink     - Device number of next linked device
 * $3A - LongWord - extendedDibPtr  - Pointer to additional device information
 * $3E - Word     - DIBDevNum       - Initial device number (assigned at startup)
+                        ds  \
 DIBs
-_dib0                   adrl #0                  ; +00 pointer to the next DIB
+_dib0                   adrl #0                     ; +00 pointer to the next DIB
                         adrl MainEntry              ; +04 driver entry point
                         dw  DEVCHARACTERISTICS      ; +08 characteristics
                         ds  4                       ; +0A block count
-                        ; adrl #65535 ; block count of harddisk image for testing only!
-:devname                str 'UDRIVE-H01'      ; +0E device name
+                                                    ; adrl #65535 ; block count of harddisk image for testing only!
+:devname                str 'UDRIVE01'              ; +0E device name
                         ds  #32-{*-:devname}        ;  .. Padding to 32 bytes
 _udSlot0                dw  $0000                   ; +2E slot number
                         dw  $0001                   ; +30 unit number
@@ -78,11 +76,12 @@ _udSlot0                dw  $0000                   ; +2E slot number
                         adrl $00000000              ; +3A extended DIB ptr
                         dw  $0000                   ; +3E device number
 
-_dib1                   adrl _dib2                       ; +00 pointer to the next DIB
+** I'm not using this right now... there should be 12 (possibly more if multiple UD cards?)
+_dib1                   adrl _dib2                  ; +00 pointer to the next DIB
                         adrl MainEntry              ; +04 driver entry point
                         dw  DEVCHARACTERISTICS      ; +08 characteristics
                         ds  4                       ; +0A block count
-:devname                str 'UDriveDevice-H02'      ; +0E device name
+:devname                str 'UDRIVE02'              ; +0E device name
                         ds  #32-{*-:devname}        ;  .. Padding to 32 bytes
 _udSlot1                dw  $0000                   ; +2E slot number
                         dw  $0002                   ; +30 unit number
@@ -94,7 +93,7 @@ _udSlot1                dw  $0000                   ; +2E slot number
                         dw  $0000                   ; +3E device number
 
 
-_dib2                   adrl _dib3                       ; +00 pointer to the next DIB
+_dib2                   adrl _dib3                  ; +00 pointer to the next DIB
                         adrl MainEntry              ; +04 driver entry point
                         dw  DEVCHARACTERISTICS      ; +08 characteristics
                         ds  4                       ; +0A block count
@@ -123,26 +122,19 @@ _udSlot3                dw  $0000                   ; +2E slot number
                         dw  $0000                   ; +38 next linked device
                         adrl $00000000              ; +3A extended DIB ptr
                         dw  $0000                   ; +3E device number
+
+
+
 ** Dispatch Routine - per Apple IIgs GS/OS Device Driver Reference (p) 193
-*
 * A = Call number
-MainEntry               phb
-                        phk
+MainEntry               phk                         ; I traced back to GS/OS and they handle preserving B
                         plb
-*                         cmp #0
-*                         beq :go
-*                         * cmp #5
-*                         beq :go
-*                         stal $0c0000
-*                         brk $00
-* :go
                         asl
                         tax
                         stz errCode
                         jsr (dispatchTable,x)
                         lda errCode
 :done_prep_result       cmp #$0001
-                        plb
                         rtl
 
 ** For a more detailed explanation of driver calls, see Chapter 10, "GS/OS Driver Call Reference."
@@ -156,11 +148,12 @@ dispatchTable           da  Driver_Startup          ; Prepares a device for all 
                         da  Driver_Flush            ; (NA) Writes out any characters in a character driver's buffer
                         da  Driver_Shutdown         ; Prepares a device driver to be purged
 
+** @todo - I think we do need to support some control calls, both AS and Slinky driver do and they are block devices
+Driver_Control
 ** Not implemented for block devices
-Driver_Open             
-Driver_Close            
-Driver_Flush            
-Driver_Control         
+Driver_Open
+Driver_Close
+Driver_Flush
                         rts
 
 
@@ -171,65 +164,289 @@ Driver_Control
 **       access without further initialization.
 Driver_Startup          BorderColor #0              ; CALLED 1st!
 
-                        * lda #BRKBAD
-                        * stal CTRLRESETVECTOR+1
-                        * stal OACTRLRESETVECTOR+1
-                        * lda #>BRKBAD
-                        * stal CTRLRESETVECTOR+2
-                        * stal OACTRLRESETVECTOR+2
-                        
                         jsr UDDetectSlot
                         jsr UDGetSlot
                         bne :card_found
                         brl Driver_Shutdown         ; no card (detect anyways...)
-:card_found             ora #$0008                  ; bit 3 = 1 for card slot
+:card_found
+                        ora #$0008                  ; bit 3 = 1 for card slot
                         sta _udSlot0
-                      ;  sta _udSlot1
+                                                    ;  sta _udSlot1
                         lda #1                      ; set active
                         sta udActive
-                        BorderColor #12 ;green
+                        BorderColor #12             ;green
                         rts
-
 
 Driver_Shutdown         BorderColor #8              ;brown
                         stz udActive
                         rts
 
 
-** Need to copy 'requestCount' bytes starting at 'blockNum' from 'unitNum' of current dib @ 'dibPtr'
-** Only change is we write transferCount, should reflect *actual* bytes, which it doesn't right now
+** Copy 'requestCount' bytes starting at 'blockNum' from 'unitNum' of current dib @ 'dibPtr'
 Driver_Read             BorderColor #14
-                     
-                        jsr DRDebug
-
-
 
                         lda requestCount
                         ora requestCount+2
                         bne :read1
-:read0                  clc ;return with no error (accumulator already 0)
+                                                    ; slinky driver says it's okay
+:read0                  clc                         ; return with no error (accumulator already 0)
                         rts
-:read1                  ldy #$30 ; unitNum 
+                                                    ; av's driver considers it invalid
+:not_used               lda #$002C                  ; invalidByteCount
+                        sta errCode
+                        sec
+                        rts
+
+:read1                  PushLong bufferPtr          ; save this because technically we should change any DP other than transferCount
+                        jsr SetUDBlock
+:read2                  ldy #$30                    ; unitNum
                         lda [dibPtr],y
                         and #$000F
                         jsr UDReadBlock
-                        lda	requestCount	; assume transfer=request @todo?
-                    	sta	transferCount
-                        lda	requestCount+2
-                        sta	transferCount+2
+                        lda transferCount           ; safe multi-block read
+                        clc
+                        adc #$200                   ; PRODOS BLOCK SIZE
+                        sta transferCount
+                        lda transferCount+2
+                        adc #0
+                        sta transferCount+2
+
+                        lda transferCount+2
+                        cmp requestCount+2          ; MSB
+                        bcc NextUDBlock
+                        lda transferCount
+                        cmp requestCount
+                        bcc NextUDBlock             ; get another block
+                                                    ; otherwise we're done here
                         BorderColor #2
+                        PullLong bufferPtr
                         rts
-** @todo
+NextUDBlock             clc
+                        lda UD_CurrentBlock
+                        adc #1
+                        sta UD_CurrentBlock
+                        lda UD_CurrentBlock+2
+                        adc #0
+                        sta UD_CurrentBlock+2
+                        lda bufferPtr
+                        clc
+                        adc #$200
+                        sta bufferPtr
+                        lda bufferPtr+2
+                        adc #0
+                        sta bufferPtr+2
+                        jmp :read2
+
+SetUDBlock
+                        lda blockNum
+                        sta UD_CurrentBlock
+                        lda blockNum+2
+                        sta UD_CurrentBlock+2
+                        rts
+
 Driver_Write            BorderColor #3
-                        brk $12
+
+                        PushLong bufferPtr
+
+                        lda requestCount
+                        ora requestCount+2
+                        bne :write1
+                                                    ; slinky driver says it's okay *shrug*, AS treats as invalid
+:write0                 clc                         ; return with no error (accumulator already 0)
                         rts
+
+
+:write1                 jsr SetUDBlock
+:write2                 ldy #$30                    ; unitNum
+                        lda [dibPtr],y
+                        and #$000F
+                        jsr UDWriteBlock
+                        lda transferCount
+                        clc
+                        adc #$200                   ; PRODOS BLOCK SIZE
+                        sta transferCount
+                        lda transferCount+2
+                        adc #0
+                        sta transferCount+2
+
+                        lda transferCount+2
+                        cmp requestCount+2          ; MSB
+                        bcc NextUDWBlock
+                        lda transferCount
+                        cmp requestCount
+                        bcc NextUDWBlock            ; write another block
+                                                    ; otherwise we're done here
+                        BorderColor #2
+                        PullLong bufferPtr
+                        rts
+
+NextUDWBlock            clc
+                        lda UD_CurrentBlock
+                        adc #1
+                        sta UD_CurrentBlock
+                        lda UD_CurrentBlock+2
+                        adc #0
+                        sta UD_CurrentBlock+2
+                        lda bufferPtr
+                        clc
+                        adc #$200
+                        sta bufferPtr
+                        lda bufferPtr+2
+                        adc #0
+                        sta bufferPtr+2
+                        jmp :write2
+                        rts
+
+
+Driver_Status           BorderColor #5              ;
+                        lda statusCode
+                        cmp #5                      ; Only calls 0-4 are valid
+                        bcc :do_status
+                        lda drvBadCode              ; #$0021, Invalid control or status code
+                        sta errCode
+                        rts
+:do_status
+                        stz transferCount
+                        stz transferCount+2
+                        asl
+                        tax
+                        jmp (statusTable,x)
+
+
+statusTable             da  GetDeviceStatus         ; subcall $0000
+                        da  GetConfigParameters     ; subcall $0001
+                        da  GetWaitStatus           ; subcall $0002
+                        da  GetFormatOptions        ; subcall $0003
+                        da  GetPartitionMap         ; subcall $0004
+
+GetConfigParameters
+GetWaitStatus
+                        lda #0
+                        sta [statusListPtr]
+                        lda #2
+                        sta transferCount
+                        rts
+
+GetPartitionMap         brk $55
+GetFormatOptions        brk $66
+
+
+** Block Device Status Word **
+* High Byte                                    Low Byte
+* +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
+* | 15 | 14 | 13 | 12 | 11 | 10 |  9 |  8 |  7 |  6 |  5 |  4 |  3 |  2 |  1 |  0 |
+* +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
+*    |    |    |                                            |         |    |    |
+*    |    |    |                                            |         |    |    +-- 1 = Disk has been switched
+*    |    |    |                                            |         |    +------- 1 = Device is interrupting
+*    |    |    |                                            |         +----------- 1 = Device is write protected
+*    |    |    |                                            +-------------- 1 = Disk in drive
+*    |    |    |
+*    |    |    +----------------------------------------- 1 = Background busy
+*    |    +----------------------------------------------- 1 = Linked device
+*    +--------------------------------------------------- 1 = Uncertain block count
+
+** Response parameters (written to buffer @ statusListPtr)
+*  $00 - Word - Status word (above)
+*  $02 - Long - Numblocks
+GetDeviceStatus         BorderColor #13             ; Yellow
+
+                        lda #2                      ; default
+                        sta transferCount
+
+                        lda requestCount            ; check number of bytes to be transferred
+                        cmp #6
+                        bcc :not6
+                        lda #6                      ; asked for 6 so we'll give 'em 6
+                        sta transferCount
+
+                        ldy #2                      ; write longword number of blocks
+                        lda #MAXBLOCKS
+                        sta [statusListPtr],y
+                        iny
+                        iny
+                        lda #^MAXBLOCKS
+                        sta [statusListPtr],y
+
+:not6                   ldx #diskInDriveBit         ; #$0010  (bit 4)
+                        lda udActive                ; is there a card?
+                        bne :started                ; yes
+                        inx                         ; no, add 1 to status (bit 0), now = #$0011 (disk has been switched)
+:started                txa
+                        ora #uncertainBlockCountBit ; finally set uncertainblockcount (bit 15) so = #$801x
+                        sta [statusListPtr]         ; is our status
+                        BorderColor #11
+                        rts
+
+
+
+
+** UD DRIVER CONSTANTS
+MAXBLOCKS               =   $ffffffff               ; super-duper
+MAXDEVICES              =   #1                      ; @todo verify
+DEVVERSION              =   $001D                   ; v0.01d (developmental)  1000 for release
+DEVID_HDD               =   $0013                   ; Hard disk drive (generic) (page 185)
+DEVCHARACTERISTICS      =   $8BE8                   ; default characteristics 8FE8
+                                                    ;  8 1000 => RAM or ROM disk
+                                                    ;  B 1011 => restartable + not speed dependent
+                                                    ;  E 1110 => block device | write allowed | read allowed
+                                                    ;  C 1100 => 1000 format allowed | removable media
+
+
+** COMMON VARIABLES
+errCode                 ds  2
+udActive                ds  2                       ; 0: inactive, 1: installed and active
+
+** GS/OS ERROR CODES
+invDevNum               =   #$0011                  ; Invalid device number
+drvBadCode              =   #$0021                  ; Invalid control or status code
+parmOutRng              =   #$0053                  ; Parameter out of range
+
+** GS/OS EQUATES
+uncertainBlockCountBit  =   $8000
+diskSwitchedBit         =   $0001
+diskInDriveBit          =   $0010
+diskModifyBit           =   $0100
+
+** GS/OS DIRECT PAGE
+deviceNum               =   $00
+callNum                 =   $02
+bufferPtr               =   $04
+statusListPtr           =   $04
+* controlListPtr   =     $04
+requestCount            =   $08
+transferCount           =   $0C                     ;  Longword RESULT; indicates the number of bytes actually transferred
+blockNum                =   $10
+blockSize               =   $14
+FSTNum                  =   $16                     ; *
+statusCode              =   $16                     ; Word INPUT; Type of status request, only $0000-$0004 are defined
+* controlCode      =     $16           ; *
+volumeID                =   $18
+cachePriority           =   $1A
+cachePointer            =   $1C
+dibPtr                  =   $20
+
+
+
+*********************************************** DEBUG CODE START
+CTRLRESETVECTOR         =   $E10064
+OACTRLRESETVECTOR       =   $E11680
+
+BorderColor             MAC
+                        DO  DEBUG_BORDER
+                        sep $30
+                        lda #]1
+                        stal $00c034
+                        rep $30
+                        FIN
+                        EOM
 
 BufferDebug             ldy #0
 :prloop                 ldal [bufferPtr],y
                         jsr PrHexByte
                         lda #" "
                         jsr Cout80
-                        tya     ; check newline?
+                        tya                         ; check newline?
                         and #$0F
                         cmp #$0F
                         bne :cont
@@ -240,7 +457,7 @@ BufferDebug             ldy #0
                         rts
 
 
-DRDebug                 DO DEBUG_TEXT
+DRDebug                 DO  DEBUG_TEXT
                         pha
                         phx
                         phy
@@ -268,16 +485,16 @@ DRDebug                 DO DEBUG_TEXT
                         jsr DIBDebug                ; <-----------------------------
 
                         jsr WaitKey
-                        * jsr TextClear
-                        * jsr TextLibInit
-                        * jsr BufferDebug
-                        * jsr WaitKey
+                        *   jsr                     TextClear
+                        *   jsr                     TextLibInit
+                        *   jsr                     BufferDebug
+                        *   jsr                     WaitKey
                         and #$00ff
                         cmp #"a"
                         bne :cont
                         brk $DB
-:cont                   
-                          jsr TextLibInit
+:cont
+                        jsr TextLibInit
                         jsr TextClear
                         RESTOREVID
                         ply
@@ -287,7 +504,7 @@ DRDebug                 DO DEBUG_TEXT
                         rts
 
 
-DSDebug                 DO DEBUG_TEXT
+DSDebug                 DO  DEBUG_TEXT
                         pha
                         phx
                         phy
@@ -419,157 +636,8 @@ volumeIDSTR             asc "       volumeID: ",00
 statusListSTR           asc "     statusList: ",00
 tmpSpace                ds  4
 
-Driver_Status           BorderColor #5              ;
-                        lda statusCode
-                        brk $ff
-                        cmp #5                      ; Only calls 0-4 are valid
-                        bcc :do_status
-                        lda drvBadCode              ; #$0021, Invalid control or status code
-                        sta errCode
-                        rts
-:do_status              stz transferCount
-                        stz transferCount+2
-                        asl
-                        tax
-                        jsr (statusTable,x)
-                        rts
-
-
-statusTable             da  DSGetStatus             ; $0000 = GetDeviceStatus
-                        da  DSGet                   ; $0001 = GetConfigParameters
-                        da  DSGet                   ; $0002 = GetWaitStatus
-                        da  DSGetFormatOptions      ; $0003 = GetFormatOptions
-                        da  DSNoOp                  ; $0004 = GetPartitionMap
-DSGet
-DSGetFormatOptions
-DSNoOp                ;  brk $44
-                        rts
-
-* Block Device Status:
-*
-* High Byte                                    Low Byte
-* +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
-* | 15 | 14 | 13 | 12 | 11 | 10 |  9 |  8 |  7 |  6 |  5 |  4 |  3 |  2 |  1 |  0 |
-* +----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
-*    |    |    |                                            |         |    |    |
-*    |    |    |                                            |         |    |    +-- 1 = Disk has been switched
-*    |    |    |                                            |         |    +------- 1 = Device is interrupting
-*    |    |    |                                            |         +----------- 1 = Device is write protected
-*    |    |    |                                            +-------------- 1 = Disk in drive
-*    |    |    |
-*    |    |    +----------------------------------------- 1 = Background busy
-*    |    +----------------------------------------------- 1 = Linked device
-*    +--------------------------------------------------- 1 = Uncertain block count
-
-** PARAMETERS
-*  $00 - Word - Status word (above)
-*  $02 - Long - Numblocks
-DSGetStatus             BorderColor #13             ; Yellow
-                        jsr DSDebug
-
-                        lda #2                      ; default
-                        sta transferCount
-
-                        lda requestCount            ; check number of bytes to be transferred
-                        cmp #6
-                        bcc :not6
-                        lda #6                      ; asked for 6 so we'll give 'em 6
-                        sta transferCount
-
-
-                        ldy #2                      ; write longword number of blocks
-                        lda #maxBLOCKS
-                        sta [statusListPtr],y
-                        iny
-                        iny
-                        lda #^maxBLOCKS
-                        sta [statusListPtr],y
-
-:not6                   ldx #diskInDriveBit         ; #$0010  (bit 4)
-                        lda udActive                ; is there a card?
-                        bne :started                ; yes
-                        inx                         ; no, add 1 to status (bit 0), now = #$0011 (disk has been switched)
-:started                txa
-                        ora #uncertainBlockCountBit ; finally set uncertainblockcount (bit 15) so = #$801x
-                        sta [statusListPtr]         ; is our status
-                        BorderColor #11
-                        jsr DSDebug
-                        rts
-
-
-
-
-
-
-*** config
-MAXDEVICES              =   #1                     ; @todo verify
-DEVVERSION              =   $001D                   ; v0.01d (developmental)  1000 for release
-DEVID_HDD               =   $0013                   ; Hard disk drive (generic) (page 185)
-DEVCHARACTERISTICS      =   $4BE8                   ; default characteristics 8FE8
-                                                    ;  8 1000 => RAM or ROM disk
-                                                    ;  B 1011 => restartable + not speed dependent
-                                                    ;  E 1110 => block device | write allowed | read allowed
-                                                    ;  C 1100 => 1000 format allowed | removable media
-
-                            ; 4BE8
-
-
-** COMMON VARIABLES
-errCode                 ds  2
-udActive                ds  2                       ; 0: inactive, 1: installed and active
-
-** UD DRIVER EQUATES
-maxBLOCKS               =   $ffffffff               ; super-duper
-
-** GS/OS ERROR CODES
-invDevNum               =   #$0011                  ; Invalid device number
-drvBadCode              =   #$0021                  ; Invalid control or status code
-parmOutRng              =   #$0053                  ; Parameter out of range
-
-** GS/OS EQUATES
-uncertainBlockCountBit  =   $8000
-diskSwitchedBit         =   $0001
-diskInDriveBit          =   $0010
-diskModifyBit           =   $0100
-
-** GS/OS DIRECT PAGE
-deviceNum               =   $00
-callNum                 =   $02
-bufferPtr               =   $04
-statusListPtr           =   $04
-* controlListPtr   =     $04
-requestCount            =   $08
-transferCount           =   $0C                     ;  Longword RESULT; indicates the number of bytes actually transferred
-blockNum                =   $10
-blockSize               =   $14
-FSTNum           =     $16           ; *
-statusCode              =   $16                     ; Word INPUT; Type of status request, only $0000-$0004 are defined
-* controlCode      =     $16           ; *
-volumeID                =   $18
-cachePriority           =   $1A
-cachePointer            =   $1C
-dibPtr                  =   $20
-
-
-
-*********************************************** DEBUG CODE START
-
-BorderColor             MAC
-                        DO  DEBUG_BORDER
-                        sep $30
-                        lda #]1
-                        stal $00c034
-                        rep $30
-                        FIN
-                        EOM
-
-CTRLRESETVECTOR = $E10064
-OACTRLRESETVECTOR = $E11680
-
-
 *********************************************** DEBUG CODE END
 
 
                         put ../../lib/ultimate-drive/udlib.s
                         put ../../lib/textlib.s     ; this is really just for debugging
-                        use QD.Macs.s

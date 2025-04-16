@@ -8,10 +8,10 @@
 UDRomSig                asc 'UltimateDrive'         ; Slot ROM signature
 UDRomSigLen             =   *-UDRomSig
 UDRomSigOffset          =   $EC
-UDSlotNum               dw  0                       ; slot num * 16   e.g. slot 6 = #$0060  is word for 16-bit compat 
+UDSlotNum               dw  0                       ; slot num * 16   e.g. slot 6 = #$0060  is word for 16-bit compat
 UDMacAddr               ds  6                       ; 00:00:00:00:00:00
 Ptr1                    =   $E0                     ; 3-byte long address pointer <- USES DP ADDRESS!
-                                                    ; $E0 is also part of marinetti scratch dp available 
+                                                    ; $E0 is also part of marinetti scratch dp available
 
 
 ** Trying to keep this similar to the Menu.asm version
@@ -87,7 +87,7 @@ UDConnect               mx  %00
                         lda #UDCmd_NetOpen
                         jsr UDIoExec
                         bcc :ok                     ; error
-                        ;brk $C0                     ; C0nnect error
+                                                    ;brk $C0                     ; C0nnect error
 :ok                     rep $30
 
                         ldy #UDMacAddr
@@ -195,7 +195,7 @@ UDNetSend               mx  %00
                         *   lda                     #UDCmd_NetSend
                         jsr MENU_IO_Exec            ; exec only
                         bcc :okay
-                        ;brk $A5                     ; A5= ASSERT
+                                                    ;brk $A5                     ; A5= ASSERT
 :okay                   rep $30
                         rts
 
@@ -236,7 +236,7 @@ noerr                   sep $30
                         rep $30
                         rts
 
-* GS/OS Driver read defines:  blockNum, blockSize, bufferPtr, requestCount 
+* GS/OS Driver read defines:  blockNum, blockSize, bufferPtr, requestCount
 * DIB defines: unitNum
 
 * statusListPtr           =   $04
@@ -250,49 +250,82 @@ noerr                   sep $30
 GSOS_bufferPtr          =   $04
 GSOS_requestCount       =   $08
 GSOS_blockNum           =   $10
-
+UD_CurrentBlock         adrl 0
 * a = unitnum (e.g. #$0001)
 UDReadBlock             mx  %00
                         sep $30
                         ldx UDSlotNum               ; UD SET UNITNUM
                         stal UD_IO_UnitNum,x
 
+                        lda UD_CurrentBlock         ; UD SET BLOCK TO READ
+                        stal UD_IO_BlockNum,x
+                        lda UD_CurrentBlock+1
+                        stal UD_IO_BlockNum,x
+                        lda UD_CurrentBlock+2
+                        stal UD_IO_BlockNum,x
+                        lda UD_CurrentBlock+3
+                        stal UD_IO_BlockNum,x
+
                         lda #UDCmd_SP_ReadBlock     ; UD SET CMD (READBLOCK)
-                        stal UD_IO_Cmd,x
-
-                        lda GSOS_blockNum+3           ; UD SET BLOCK TO READ
-                        stal UD_IO_BlockNum,x
-                        lda GSOS_blockNum+2
-                        stal UD_IO_BlockNum,x
-                        lda GSOS_blockNum+1
-                        stal UD_IO_BlockNum,x
-                        lda GSOS_blockNum
-                        stal UD_IO_BlockNum,x
-
-
                         jsr UDIoExec
                         bcc :noerr
+                        BorderColor #1
 :err                    brk $EE                     ; todo: remove assert
-:noerr                  
+:noerr
 
 :read                   rep $30
-                        lda GSOS_requestCount       ; bytes to read
-                        sta :_requestCount+1
+                        *   lda                     GSOS_requestCount       ; bytes to read
+                        *   sta                     :_requestCount+1
 
+                        php
+                        sei
                         sep $20                     ; now we have short m, long x/y
+
                         ldy #$0000
-                        ldx UDSlotNum
 :read_from_ud           ldal UD_IO_RData,x
                         stal [GSOS_bufferPtr],y
                         iny
-:_requestCount          cpy #$0000                  ; SMC
+:_requestCount          cpy #$0200                  ; PRODOS BLOCK SIZE 512 BYTES FIXED
                         bne :read_from_ud
-
-                        rep $30
+                        plp
+                        *   rep                     $30 ; will it blend!!?
                         rts
 
 
+UDWriteBlock             mx  %00
+                        sep $30
+                        ldx UDSlotNum               ; UD SET UNITNUM
+                        stal UD_IO_UnitNum,x
 
+                        lda UD_CurrentBlock         ; UD SET BLOCK TO READ
+                        stal UD_IO_BlockNum,x
+                        lda UD_CurrentBlock+1
+                        stal UD_IO_BlockNum,x
+                        lda UD_CurrentBlock+2
+                        stal UD_IO_BlockNum,x
+                        lda UD_CurrentBlock+3
+                        stal UD_IO_BlockNum,x
+
+                        lda #UDCmd_SP_WriteBlock    ; UD SET CMD (WRITEBLOCK)
+                        jsr UDIoExec
+                        bcc :noerr
+                        BorderColor #1
+:err                    brk $EE                     ; todo: remove assert
+:noerr
+
+:write                  rep $30
+                        php                         ; save m,x,i
+                        sei
+                        sep $20                     ; now we have short m, long x/y
+
+                        ldy #$0000
+:write_to_ud            ldal [GSOS_bufferPtr],y
+                        stal UD_IO_WData,x
+                        iny
+:_requestCount          cpy #$0200                  ; PRODOS BLOCK SIZE 512 BYTES FIXED
+                        bne :write_to_ud
+                        plp                         ; restore m,x,i
+                        rts
 
 
 UDCmd_SP_Status         =   $00                     ; SP calls
