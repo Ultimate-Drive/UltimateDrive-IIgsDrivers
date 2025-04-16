@@ -306,12 +306,6 @@ UDWriteBlock             mx  %00
                         lda UD_CurrentBlock+3
                         stal UD_IO_BlockNum,x
 
-                        lda #UDCmd_SP_WriteBlock    ; UD SET CMD (WRITEBLOCK)
-                        jsr UDIoExec
-                        bcc :noerr
-                        BorderColor #1
-:err                    brk $EE                     ; todo: remove assert
-:noerr
 
 :write                  rep $30
                         php                         ; save m,x,i
@@ -324,6 +318,13 @@ UDWriteBlock             mx  %00
                         iny
 :_requestCount          cpy #$0200                  ; PRODOS BLOCK SIZE 512 BYTES FIXED
                         bne :write_to_ud
+                        
+                        lda #UDCmd_SP_WriteBlock    ; UD SET CMD (WRITEBLOCK)
+                        jsr UDIoExec
+                        bcc :noerr
+                        BorderColor #1
+:err                    brk $EE                     ; todo: remove assert
+:noerr
                         plp                         ; restore m,x,i
                         rts
 
