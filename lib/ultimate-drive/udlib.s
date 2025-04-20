@@ -253,6 +253,7 @@ GSOS_blockNum           =   $10
 UD_CurrentBlock         adrl 0
 * a = unitnum (e.g. #$0001)
 UDReadBlock             mx  %00
+                        php
                         sep $30
                         ldx UDSlotNum               ; UD SET UNITNUM
                         stal UD_IO_UnitNum,x
@@ -273,22 +274,34 @@ UDReadBlock             mx  %00
 :err                    brk $EE                     ; todo: remove assert
 :noerr
 
-:read                   rep $30
-                        *   lda                     GSOS_requestCount       ; bytes to read
-                        *   sta                     :_requestCount+1
+:read                   sep $20                     ; now we have short m, long x/y
 
-                        php
+                        ldal UD_IO_Mode,x
+                        bpl :polling_read
+                        lda GSOS_bufferPtr+2
+                        cmp #$41
+                        bcs :polling_read
                         sei
-                        sep $20                     ; now we have short m, long x/y
+                        stal $00c037
+                        lda  GSOS_bufferPtr
+                        stal UD_IO_MemPtrL,x
+                        lda  GSOS_bufferPtr+1
+                        stal UD_IO_MemPtrH,x
+                        ldal UD_IO_DoDMA,x
+:dma_read               ldal UD_IO_Status,x
+                        bmi :dma_read
+                        lsr
+                        bcc :done_read
 
-                        ldy #$0000
-:read_from_ud           ldal UD_IO_RData,x
+:polling_read           ldy #$0
+:read_byte              ldal UD_IO_RData,x
                         stal [GSOS_bufferPtr],y
                         iny
-:_requestCount          cpy #$0200                  ; PRODOS BLOCK SIZE 512 BYTES FIXED
-                        bne :read_from_ud
+                        cpy #$0200                  ; PRODOS BLOCK SIZE 512 BYTES FIXED (=requestCount)
+                        bne :read_byte
+:done_read              lda #$0
+                        stal $00c037
                         plp
-                        *   rep                     $30 ; will it blend!!?
                         rts
 
 
