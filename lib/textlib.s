@@ -42,15 +42,25 @@ RestoreVid              mx  %00
                         stal $00c029
                         rep $30
                         rts
+                        
+WaitBreak               php
+                        sep $30
+                        jsr WaitKey
+                        cmp #"a"
+                        bne :cont
+                        brk $DB
+:cont                   plp
+                        rts
 
-
-WaitKey                 sep #$30                    ; good old apple ii key wait routine
+WaitKey                 php
+                        sep #$30                    ; good old apple ii key wait routine
 :wait                   ldal $00C000                ;  but called using long addressing modes
-                        bpl :wait                   ;  in 8-bit mode
+                        bpl :wait                   
                         stal $00C010
-                        rep #$30
+                        plp
                         rts
 *** DEBUG STUFF END
+                        mx %00
 
 
 PRINTPARMBYTE           MAC
