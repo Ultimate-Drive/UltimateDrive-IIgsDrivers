@@ -283,15 +283,17 @@ UDReadBlock             mx  %00
                         bcs :polling_read
                         sei
                         stal $00c037
-                        lda  GSOS_bufferPtr
+                        lda GSOS_bufferPtr
                         stal UD_IO_MemPtrL,x
-                        lda  GSOS_bufferPtr+1
+                        lda GSOS_bufferPtr+1
                         stal UD_IO_MemPtrH,x
                         ldal UD_IO_DoDMA,x
 :dma_read               ldal UD_IO_Status,x
                         bmi :dma_read
                         lsr
-                        bcc :done_read
+                        lda #$0
+                        stal $00c037
+                        bcc :done_read              ; from lsr above
 
 :polling_read           ldy #$0
 :read_byte              ldal UD_IO_RData,x
@@ -299,13 +301,12 @@ UDReadBlock             mx  %00
                         iny
                         cpy #$0200                  ; PRODOS BLOCK SIZE 512 BYTES FIXED (=requestCount)
                         bne :read_byte
-:done_read              lda #$0
-                        stal $00c037
+:done_read
                         plp
                         rts
 
 
-UDWriteBlock             mx  %00
+UDWriteBlock            mx  %00
                         sep $30
                         ldx UDSlotNum               ; UD SET UNITNUM
                         stal UD_IO_UnitNum,x
@@ -331,7 +332,7 @@ UDWriteBlock             mx  %00
                         iny
 :_requestCount          cpy #$0200                  ; PRODOS BLOCK SIZE 512 BYTES FIXED
                         bne :write_to_ud
-                        
+
                         lda #UDCmd_SP_WriteBlock    ; UD SET CMD (WRITEBLOCK)
                         jsr UDIoExec
                         bcc :noerr

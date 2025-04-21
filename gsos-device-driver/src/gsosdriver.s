@@ -163,6 +163,8 @@ Driver_Flush
 **       no error during startup, it then becomes available for an applicaton to
 **       access without further initialization.
 Driver_Startup          BorderColor #0              ; CALLED 1st!
+                        lda #$0000
+                        stal $300000                ; Debug
 
                         jsr UDDetectSlot
                         jsr UDGetSlot
@@ -184,6 +186,16 @@ Driver_Shutdown         BorderColor #8              ;brown
 
 ** Copy 'requestCount' bytes starting at 'blockNum' from 'unitNum' of current dib @ 'dibPtr'
 Driver_Read             BorderColor #14
+
+                        ldal $300000                ; for debugging number of read calls before crash
+                        inc
+                        stal $300000
+                        lda bufferPtr
+                        stal $300004                ; and what the last buffer and block were
+                        lda bufferPtr+2
+                        stal $300006
+                        lda blockNum
+                        stal $300008
 
                         lda requestCount
                         ora requestCount+2
@@ -484,15 +496,7 @@ DRDebug                 DO  DEBUG_TEXT
                         CR
                         jsr DIBDebug                ; <-----------------------------
 
-                        jsr WaitKey
-                        *   jsr                     TextClear
-                        *   jsr                     TextLibInit
-                        *   jsr                     BufferDebug
-                        *   jsr                     WaitKey
-                        and #$00ff
-                        cmp #"a"
-                        bne :cont
-                        brk $DB
+                        jsr WaitBreak
 :cont
                         jsr TextLibInit
                         jsr TextClear
@@ -541,11 +545,7 @@ DSDebug                 DO  DEBUG_TEXT
                         CR
                         jsr DIBDebug                ; <-----------------------------
 
-                        jsr WaitKey
-                        and #$00ff
-                        cmp #"a"
-                        bne :cont
-                        brk $DB
+                        jsr WaitBreak
 :cont                   RESTOREVID
                         ply
                         plx
